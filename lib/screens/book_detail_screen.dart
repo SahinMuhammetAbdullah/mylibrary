@@ -87,6 +87,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     final bookService = context.read<BookService>();
     app_models.Book? loadedBook;
     if (widget.bookId != null) {
+      // Mod 1: Kütüphaneden gelen kitap (Sorunsuz Çalışan Kısım)
       loadedBook = await bookService.getBookDetailsById(widget.bookId!);
       if (loadedBook != null) {
         _isBookInLibrary = true;
@@ -94,10 +95,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         if (mounted) _notes = notesResult;
       }
     } else if (widget.apiBook != null) {
+      // Mod 2: Arama sonucundan gelen kitap
       final apiBookData = widget.apiBook!;
       final existingBook =
           await bookService.findBookInLibraryByWorkId(apiBookData.workKey);
       if (existingBook != null) {
+        // Kitap zaten kütüphanede varmış, onun bilgilerini yükle.
         loadedBook = await bookService.getBookDetailsById(existingBook.id);
         if (loadedBook != null) {
           _isBookInLibrary = true;
@@ -105,35 +108,42 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           if (mounted) _notes = notesResult;
         }
       } else {
+        // Kitap kütüphanede yok, API'dan tüm detayları çek ve geçici bir nesne oluştur.
         _isBookInLibrary = false;
         final details =
             await OpenLibraryService().getBookDetails(apiBookData.workKey);
+
+        // Geçici Book nesnesini oluştururken tüm alanları ata.
         loadedBook = app_models.Book(
-            id: -1,
-            name: apiBookData.title,
-            oWorkId: apiBookData.workKey,
-            authors: apiBookData.authors
-                .map((name) => app_models.Author(id: -1, name: name))
-                .toList(),
-            coverUrl: apiBookData.coverId != null
-                ? 'https://covers.openlibrary.org/b/id/${apiBookData.coverId}-M.jpg'
-                : null,
-            description: details?.description,
-            publishers: (details?.publishers ?? [])
-                .map((name) => app_models.Publisher(id: -1, name: name))
-                .toList(),
-            subjects: (details?.subjects ?? [])
-                .map((name) => app_models.Subject(id: -1, name: name))
-                .toList(),
-            people: (details?.people ?? [])
-                .map((name) => app_models.Person(id: -1, name: name))
-                .toList(),
-            places: (details?.places ?? [])
-                .map((name) => app_models.Place(id: -1, name: name))
-                .toList(),
-            times: (details?.times ?? [])
-                .map((name) => app_models.Time(id: -1, name: name))
-                .toList());
+          id: -1,
+          name: apiBookData.title,
+          oWorkId: apiBookData.workKey,
+          authors: apiBookData.authors
+              .map((name) => app_models.Author(id: -1, name: name))
+              .toList(),
+          coverUrl: apiBookData.coverId != null
+              ? 'https://covers.openlibrary.org/b/id/${apiBookData.coverId}-M.jpg'
+              : null,
+          description: details?.description,
+          // === HATAYI DÜZELTEN SATIR ===
+          totalPages: details?.totalPages,
+          // ==============================
+          publishers: (details?.publishers ?? [])
+              .map((name) => app_models.Publisher(id: -1, name: name))
+              .toList(),
+          subjects: (details?.subjects ?? [])
+              .map((name) => app_models.Subject(id: -1, name: name))
+              .toList(),
+          people: (details?.people ?? [])
+              .map((name) => app_models.Person(id: -1, name: name))
+              .toList(),
+          places: (details?.places ?? [])
+              .map((name) => app_models.Place(id: -1, name: name))
+              .toList(),
+          times: (details?.times ?? [])
+              .map((name) => app_models.Time(id: -1, name: name))
+              .toList(),
+        );
       }
     }
     if (mounted && loadedBook != null) {
