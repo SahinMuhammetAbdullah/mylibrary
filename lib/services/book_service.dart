@@ -1,34 +1,58 @@
+// lib/services/book_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../helpers/database_helper.dart';
-import '../services/open_library_service.dart';
 import '../models/app_models.dart' as app_models;
+import '../services/open_library_service.dart';
 
 class BookService with ChangeNotifier {
+  // ... (mevcut kodun başı aynı) ...
   final DatabaseHelper _db = DatabaseHelper.instance;
   final OpenLibraryService _api = OpenLibraryService();
   final int _currentUserId = 1;
 
   List<app_models.Book> _libraryBooks = [];
   List<app_models.Book> get libraryBooks => _libraryBooks;
-
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
-  BookService() {
-    loadLibraryBooks();
-  }
-  Future<void> deleteBook(int bookId) async {
+  BookService() { loadLibraryBooks(); }
+
+  // === NOT EKLEME METODU GÜNCELLENDİ ===
+  Future<void> addNoteForBook(String text, int bookId) async {
     final db = await _db.database;
-    // ON DELETE CASCADE kuralı sayesinde, sadece Books tablosundan silmemiz yeterlidir.
-    // Veritabanı, bu kitaba bağlı tüm Library, Notes, Book_Author vb. kayıtlarını
-    // otomatik olarak silecektir.
+    await db.insert('Notes', {
+      'u_id': _currentUserId,
+      'b_id': bookId,
+      'n_text': text,
+      'n_createdAt': DateTime.now().toIso8601String(), // Oluşturulma zamanını ekle
+    });
+  }
+
+  // === YENİ NOT LİSTELEME METODU ===
+  Future<List<Map<String, dynamic>>> getAllNotesWithBookInfo({String orderBy = 'n.n_createdAt DESC'}) async {
+    final db = await _db.database;
+    // Notes tablosunu Books tablosu ile birleştirerek kitap adını alıyoruz.
+    return await db.rawQuery('''
+      SELECT 
+        n.n_id, 
+        n.n_text, 
+        n.n_createdAt, 
+        b.b_name as bookTitle 
+      FROM Notes n 
+      JOIN Books b ON n.b_id = b.b_id 
+      WHERE n.u_id = ?
+      ORDER BY $orderBy
+    ''', [_currentUserId]);
+  }
+  
+  // ... (Diğer tüm metotlar aynı kalır) ...
+    Future<void> deleteBook(int bookId) async {
+    final db = await _db.database;
     await db.delete('Books', where: 'b_id = ?', whereArgs: [bookId]);
-    
-    // Silme işleminden sonra kütüphane listesini yeniden yükleyerek arayüzü güncelle.
     await loadLibraryBooks();
   }
-  Future<bool> addBookFromApi(ApiBookSearchResult apiBook) async {
+    Future<bool> addBookFromApi(ApiBookSearchResult apiBook) async {
     final db = await _db.database;
     final existingBooks = await db.query('Books', where: 'b_oWorkId = ?', whereArgs: [apiBook.workKey], limit: 1);
     int bookId;
@@ -95,7 +119,6 @@ class BookService with ChangeNotifier {
     return app_models.Book(id: bookId, name: bookMap['b_name'] as String?, coverUrl: bookMap['b_coverUrl'] as String?, description: bookMap['b_description'] as String?, oWorkId: bookMap['b_oWorkId'] as String?, authors: authors, publishers: publishers, subjects: subjects, people: people, places: places, times: times);
   }
   
-  // --- Değişmeyen diğer metotlar ---
   Future<void> loadLibraryBooks() async {
     _isLoading = true; notifyListeners();
     final db = await _db.database;
@@ -110,7 +133,6 @@ class BookService with ChangeNotifier {
     _libraryBooks = loadedBooks; _isLoading = false; notifyListeners();
   }
   Future<List<app_models.Note>> getNotesForBook(int bookId) async { final db = await _db.database; final noteMaps = await db.query('Notes', where: 'b_id = ?', whereArgs: [bookId], orderBy: 'n_id DESC'); return noteMaps.map((m) => app_models.Note(id: m['n_id'] as int, bookId: m['b_id'] as int, text: m['n_text'] as String, bookTitle: '')).toList(); }
-  Future<void> addNoteForBook(String text, int bookId) async { final db = await _db.database; await db.insert('Notes', {'u_id': _currentUserId, 'b_id': bookId, 'n_text': text}); }
   Future<void> deleteNote(int noteId) async { final db = await _db.database; await db.delete('Notes', where: 'n_id = ?', whereArgs: [noteId]); }
   Future<app_models.Book?> findBookInLibraryByWorkId(String workId) async { final db = await _db.database; final List<Map<String, dynamic>> results = await db.rawQuery('SELECT B.* FROM Books B INNER JOIN Library L ON B.b_id = L.b_id WHERE L.u_id = ? AND B.b_oWorkId = ?', [_currentUserId, workId]); if (results.isEmpty) return null; final bookMap = results.first; return app_models.Book(id: bookMap['b_id'] as int, name: bookMap['b_name'] as String?, oWorkId: bookMap['b_oWorkId'] as String?); }
   Future<int> _getOrInsert(DatabaseExecutor txn, String table, String column, String idColumn, String value) async { final results = await txn.query(table, columns: [idColumn], where: '$column = ?', whereArgs: [value], limit: 1); if (results.isNotEmpty) return results.first[idColumn] as int; return await txn.insert(table, {column: value}); }

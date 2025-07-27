@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:reading_tracker_v2/screens/all_notes_screen.dart';
 import 'home_screen.dart';
 
 class MainWrapper extends StatefulWidget {
@@ -14,7 +15,7 @@ class _MainWrapperState extends State<MainWrapper> {
   // Placeholder screens for other tabs
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Scaffold(body: Center(child: Text("Notlar (Yapım Aşamasında)"))),
+      const AllNotesScreen(), // Placeholder yerine yeni ekranı koy
     const Scaffold(body: Center(child: Text("Profil (Yapım Aşamasında)"))),
   ];
 
