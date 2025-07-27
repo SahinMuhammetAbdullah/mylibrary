@@ -1,75 +1,113 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  // --- AÇIK TEMA ---
   static final ThemeData lightTheme = ThemeData(
     fontFamily: 'Georgia',
     brightness: Brightness.light,
-    scaffoldBackgroundColor: const Color(0xFFF8F6F0),
-    primaryColor: const Color(0xFF8B4513), // SaddleBrown
-    cardColor: const Color(0xFFFFFFFF),
+
+    // Ana Renkler (CSS'den çeviri)
+    scaffoldBackgroundColor: const Color(0xFFF8F6F0), // --bg-primary
+    cardColor: const Color(0xFFFFFFFF),               // --bg-card
+    dividerColor: const Color(0xFFE5E7EB),            // --border
+
+    // AppBar Teması
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFFDFBF5),
-      foregroundColor: Color(0xFF333333),
-      elevation: 0.5,
+      backgroundColor: Color(0xFFFFFFFF),       // --bg-secondary (header)
+      foregroundColor: Color(0xFF2C2C2C),     // --text-primary
+      elevation: 1,
       surfaceTintColor: Colors.transparent,
-      titleTextStyle: TextStyle(fontFamily: 'Georgia', fontSize: 20, color: Color(0xFF333333), fontWeight: FontWeight.bold),
+      titleTextStyle: TextStyle(fontFamily: 'Georgia', fontSize: 20, color: Color(0xFF2C2C2C), fontWeight: FontWeight.bold),
     ),
+
+    // Modern Renk Şeması (ColorScheme)
     colorScheme: const ColorScheme.light(
-      primary: Color(0xFF8B4513), // SaddleBrown
-      secondary: Color(0xFFD2B48C), // Tan
-      background: Color(0xFFF8F6F0),
-      surface: Color(0xFFFFFFFF),
-      onSurface: Color(0xFF333333),
-      onSecondary: Color(0xFF6B7280),
-      error: Color(0xFFB00020),
-      primaryContainer: Color(0xFFE5E7EB),
+      primary: Color(0xFFD4AF37),             // --accent
+      secondary: Color(0xFFF3E5AB),           // --accent-light
+      background: Color(0xFFF8F6F0),          // --bg-primary
+      surface: Color(0xFFFFFFFF),             // --bg-card & --bg-secondary
+      onSurface: Color(0xFF2C2C2C),           // --text-primary
+      onSecondary: Color(0xFF6B7280),         // --text-secondary
+      error: Color(0xFFD97706),               // --warning
+      primaryContainer: Color(0xFFE5E7EB),     // --border
     ),
+    
+    // Metin Temaları
     textTheme: const TextTheme(
-      bodyMedium: TextStyle(color: Color(0xFF333333)),
-      titleMedium: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold),
-      bodySmall: TextStyle(color: Color(0xFF9CA3AF)),
+      bodyLarge: TextStyle(color: Color(0xFF2C2C2C)),   // --text-primary
+      bodyMedium: TextStyle(color: Color(0xFF2C2C2C)),  // --text-primary
+      titleMedium: TextStyle(color: Color(0xFF2C2C2C), fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(color: Color(0xFF2C2C2C), fontWeight: FontWeight.bold),
+      bodySmall: TextStyle(color: Color(0xFF9CA3AF)),   // --text-muted
     ),
+
+    // Bottom Navigation Teması
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFFFDFBF5),
-      selectedItemColor: Color(0xFF8B4513),
-      unselectedItemColor: Color(0xFF6B7280),
-    )
+      backgroundColor: Color(0xFFFFFFFF),       // --bg-card (nav)
+      selectedItemColor: Color(0xFFD4AF37),       // --accent
+      unselectedItemColor: Color(0xFF9CA3AF),     // --text-muted
+    ),
+
+    // Chip teması (Konular, Kişiler vb. için)
+    chipTheme: ChipThemeData(
+      backgroundColor: const Color(0xFFF3E5AB).withOpacity(0.5), // --accent-light
+      labelStyle: const TextStyle(color: Color(0xFFD4AF37)),
+      side: BorderSide.none,
+    ),
   );
 
+  // --- KOYU TEMA ---
   static final ThemeData darkTheme = ThemeData(
     fontFamily: 'Georgia',
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: const Color(0xFF121212),
-    primaryColor: const Color(0xFFD2B48C), // Tan
-    cardColor: const Color(0xFF1E1E1E),
+
+    // Ana Renkler
+    scaffoldBackgroundColor: const Color(0xFF1A1A1A), // --bg-primary
+    cardColor: const Color(0xFF2D2D2D),               // --bg-card
+    dividerColor: const Color(0xFF404040),            // --border
+
+    // AppBar Teması
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF1E1E1E),
-      foregroundColor: Color(0xFFE0E0E0),
+      backgroundColor: Color(0xFF262626),       // --bg-secondary
+      foregroundColor: Color(0xFFF5F5F5),     // --text-primary
       elevation: 1,
       surfaceTintColor: Colors.transparent,
-      titleTextStyle: TextStyle(fontFamily: 'Georgia', fontSize: 20, color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold),
+      titleTextStyle: TextStyle(fontFamily: 'Georgia', fontSize: 20, color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold),
     ),
-    colorScheme: const ColorScheme.dark(
-      primary: Color(0xFFD2B48C), // Tan
-      secondary: Color(0xFF8B4513), // SaddleBrown
-      background: Color(0xFF121212),
-      surface: Color(0xFF1E1E1E),
-      onSurface: Color(0xFFE0E0E0),
-      onSecondary: Color(0xFF9E9E9E),
-      error: Color(0xFFCF6679),
-      primaryContainer: Color(0xFF404040),
+    
+    // Modern Renk Şeması (ColorScheme)
+    colorScheme: ColorScheme.dark(
+      primary: const Color(0xFFFBBF24),                 // --accent
+      secondary: const Color(0xFFFBBF24).withOpacity(0.2), // --accent-light
+      background: const Color(0xFF1A1A1A),              // --bg-primary
+      surface: const Color(0xFF2D2D2D),                 // --bg-card
+      onSurface: const Color(0xFFF5F5F5),               // --text-primary
+      onSecondary: const Color(0xFFD1D5DB),             // --text-secondary
+      error: const Color(0xFFF59E0B),                   // --warning
+      primaryContainer: const Color(0xFF404040),         // --border
     ),
+    
+    // Metin Temaları
     textTheme: const TextTheme(
-      bodyMedium: TextStyle(color: Color(0xFFE0E0E0)),
-      titleMedium: TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold),
-      titleLarge: TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold),
-      bodySmall: TextStyle(color: Color(0xFF9E9E9E)),
+      bodyLarge: TextStyle(color: Color(0xFFF5F5F5)),
+      bodyMedium: TextStyle(color: Color(0xFFF5F5F5)),
+      titleMedium: TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold),
+      titleLarge: TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.bold),
+      bodySmall: TextStyle(color: Color(0xFF9CA3AF)),   // --text-muted
     ),
+
+    // Bottom Navigation Teması
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFF1E1E1E),
-      selectedItemColor: Color(0xFFD2B48C),
-      unselectedItemColor: Color(0xFF9E9E9E),
-    )
+      backgroundColor: Color(0xFF262626), // --bg-secondary (nav)
+      selectedItemColor: Color(0xFFFBBF24),   // --accent
+      unselectedItemColor: Color(0xFF9CA3AF), // --text-muted
+    ),
+
+    // Chip teması
+    chipTheme: ChipThemeData(
+      backgroundColor: const Color(0xFFFBBF24).withOpacity(0.2), // --accent-light
+      labelStyle: const TextStyle(color: Color(0xFFFBBF24)),
+      side: BorderSide.none,
+    ),
   );
 }

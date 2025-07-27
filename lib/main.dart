@@ -1,15 +1,16 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'helpers/database_helper.dart';
 import 'screens/main_wrapper.dart';
 import 'services/book_service.dart';
-import 'theme/app_theme.dart';
+import 'theme/app_theme.dart'; // Yeni tema dosyamızı import ediyoruz
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR', null);
-  await DatabaseHelper.instance.database; // Ensure DB is initialized
+  await DatabaseHelper.instance.database;
 
   runApp(
     ChangeNotifierProvider(
@@ -35,9 +36,11 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kitaplığım V2',
+      title: 'Kitaplığım',
+      // === TEMA ATAMALARI GÜNCELLENDİ ===
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      // ===================================
       themeMode: _themeMode,
       debugShowCheckedModeBanner: false,
       home: MainWrapper(changeTheme: changeTheme),
