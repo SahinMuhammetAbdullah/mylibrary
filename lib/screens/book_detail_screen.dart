@@ -262,8 +262,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Widget _buildAuthorAndPublisherInfo() {
     final theme = Theme.of(context);
 
-    // Yazar ve yayıncı bilgisi yoksa hiçbir şey gösterme
-    if (_book!.authors.isEmpty && _book!.publishers.isEmpty) {
+    // Yazar, yayıncı veya sayfa bilgisi yoksa hiçbir şey gösterme
+    if (_book!.authors.isEmpty &&
+        _book!.publishers.isEmpty &&
+        (_book!.totalPages == null || _book!.totalPages == 0)) {
       return const SizedBox.shrink();
     }
 
@@ -272,23 +274,31 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Yazar(lar)
           if (_book!.authors.isNotEmpty)
-            Text(
-              _book!.authorString,
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text(_book!.authorString,
+                style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold)),
 
           const SizedBox(height: 8),
 
-          // Yayıncı(lar)
           if (_book!.publishers.isNotEmpty)
-            Text(
-              'Yayıncı: ${_book!.publishers.map((p) => p.name).join(', ')}',
-              style: theme.textTheme.bodyLarge,
+            Text('Yayıncı: ${_book!.publishers.map((p) => p.name).join(', ')}',
+                style: theme.textTheme.bodyLarge),
+
+          // YENİ: SAYFA SAYISI GÖSTERİMİ
+          if (_book!.totalPages != null && _book!.totalPages! > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Row(
+                children: [
+                  Icon(Icons.pages_outlined,
+                      size: 16, color: theme.textTheme.bodySmall?.color),
+                  const SizedBox(width: 6),
+                  Text('${_book!.totalPages} sayfa',
+                      style: theme.textTheme.bodyLarge),
+                ],
+              ),
             ),
         ],
       ),

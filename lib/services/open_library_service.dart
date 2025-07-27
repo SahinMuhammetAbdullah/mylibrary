@@ -28,29 +28,31 @@ class ApiBookDetails {
   final List<String> people;
   final List<String> places;
   final List<String> times;
+  final int? totalPages; // YENİ ALAN
 
-  ApiBookDetails({this.description, required this.publishers, required this.subjects, required this.people, required this.places, required this.times});
+  ApiBookDetails({this.description, required this.publishers, required this.subjects, required this.people, required this.places, required this.times, this.totalPages});
 
   factory ApiBookDetails.fromJson({
     required Map<String, dynamic> workJson,
-    required List<String> fetchedPublishers
+    required List<String> fetchedPublishers,
+    required int? fetchedPageCount, // YENİ PARAMETRE
   }) {
     String desc = '';
-    if (workJson['description'] is String) {
-      desc = workJson['description'];
-    } else if (workJson['description'] is Map && workJson['description']['value'] != null) {
-      desc = workJson['description']['value'];
-    }
+    if (workJson['description'] is String) { desc = workJson['description']; } 
+    else if (workJson['description'] is Map && workJson['description']['value'] != null) { desc = workJson['description']['value']; }
+    
     return ApiBookDetails(
       description: desc,
-      publishers: fetchedPublishers, // Yayıncıyı dışarıdan alıyoruz.
+      publishers: fetchedPublishers,
       subjects: (workJson['subjects'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       people: (workJson['subject_people'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       places: (workJson['subject_places'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       times: (workJson['subject_times'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      totalPages: fetchedPageCount, // YENİ ATAMA
     );
   }
 }
+
 
 class OpenLibraryService {
   final String _searchUrl = 'https://openlibrary.org/search.json';
@@ -60,7 +62,7 @@ class OpenLibraryService {
   Future<List<ApiBookSearchResult>> searchBooks(String query) async {
     if (query.isEmpty) return [];
     const String fields = 'key,title,author_name,cover_i';
-    final uri = Uri.parse('$_searchUrl?q=${Uri.encodeComponent(query)}&fields=$fields&limit=20');
+    final uri = Uri.parse('$_searchUrl?q=${Uri.encodeComponent(query)}&fields=$fields');
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
@@ -77,38 +79,45 @@ class OpenLibraryService {
   // === BU METOT HATAYI GİDERMEK İÇİN TAMAMEN GÜNCELLENDİ ===
   Future<ApiBookDetails?> getBookDetails(String workKey) async {
     if (!workKey.startsWith('/works/')) return null;
-
     try {
-      // 1. İstek: Eserin genel detaylarını (açıklama, konular vb.) al.
       final workUri = Uri.parse('$_baseUrl$workKey.json');
       final workResponse = await http.get(workUri);
-      if (workResponse.statusCode != 200) return null; // Ana detaylar alınamazsa devam etme.
+      if (workResponse.statusCode != 200) return null;
       final workJson = json.decode(workResponse.body);
       
-      // 2. İstek: Eserin baskılarını (yayıncıyı bulmak için) al.
-      final editionsUri = Uri.parse('$_baseUrl$workKey/editions.json?limit=5'); // İlk 5 baskıyı kontrol et yeterli
+      final editionsUri = Uri.parse('$_baseUrl$workKey/editions.json?limit=5');
       final editionsResponse = await http.get(editionsUri);
       List<String> fetchedPublishers = [];
+      int? fetchedPageCount; // Sayfa sayısını tutacak değişken
 
       if (editionsResponse.statusCode == 200) {
         final editionsJson = json.decode(editionsResponse.body);
         final entries = editionsJson['entries'] as List<dynamic>? ?? [];
-        // Yayıncı bilgisi içeren ilk baskıyı bul ve kullan.
         for (var edition in entries) {
-          final publishers = edition['publishers'] as List<dynamic>?;
-          if (publishers != null && publishers.isNotEmpty) {
-            fetchedPublishers = publishers.map((p) => p.toString()).toList();
-            break; // Yayıncıyı bulduk, döngüden çık.
+          // Yayıncıyı bul
+          if (fetchedPublishers.isEmpty) {
+            final publishers = edition['publishers'] as List<dynamic>?;
+            if (publishers != null && publishers.isNotEmpty) {
+              fetchedPublishers = publishers.map((p) => p.toString()).toList();
+            }
           }
+          // Sayfa sayısını bul
+          if (fetchedPageCount == null) {
+            final pageCount = edition['number_of_pages'];
+            if (pageCount is int && pageCount > 0) {
+              fetchedPageCount = pageCount;
+            }
+          }
+          // İkisini de bulduysak döngüden çıkabiliriz.
+          if (fetchedPublishers.isNotEmpty && fetchedPageCount != null) break;
         }
       }
 
-      // 3. İki API isteğinden gelen verileri birleştirerek modeli oluştur.
       return ApiBookDetails.fromJson(
         workJson: workJson,
         fetchedPublishers: fetchedPublishers,
+        fetchedPageCount: fetchedPageCount, // Yeni parametreyi geç
       );
-
     } catch (e) {
       print("Could not fetch complete details for $workKey: $e");
       return null;

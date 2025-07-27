@@ -28,12 +28,16 @@ class DatabaseHelper {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
-  Future<void> _onCreate(Database db, int version) async {
-    debugPrint("--- GÜNCELLENMİŞ VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
+Future<void> _onCreate(Database db, int version) async {
+    debugPrint("--- SAYFA SAYISI EKlenmiş VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
     final batch = db.batch();
 
-    // Ana Tablolar
-    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY, b_name TEXT, b_oWorkId TEXT UNIQUE, b_description TEXT, b_coverUrl TEXT)');
+    await db.execute("PRAGMA foreign_keys = ON");
+
+    // === BOOKS TABLOSU GÜNCELLENDİ ===
+    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY, b_name TEXT, b_oWorkId TEXT UNIQUE, b_description TEXT, b_coverUrl TEXT, b_totalPages INTEGER)');
+    
+    // Diğer tablolar aynı kalır
     batch.execute('CREATE TABLE User(u_id INTEGER PRIMARY KEY, u_userName TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Author(a_id INTEGER PRIMARY KEY, a_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Publisher(pbl_id INTEGER PRIMARY KEY, pbl_name TEXT NOT NULL UNIQUE)');
@@ -41,11 +45,7 @@ class DatabaseHelper {
     batch.execute('CREATE TABLE Person(prs_id INTEGER PRIMARY KEY, prs_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Place(plc_id INTEGER PRIMARY KEY, plc_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Time(t_id INTEGER PRIMARY KEY, t_name TEXT NOT NULL UNIQUE)');
-
-    // === NOTLAR TABLOSU GÜNCELLENDİ ===
     batch.execute('CREATE TABLE Notes(n_id INTEGER PRIMARY KEY, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, n_text TEXT NOT NULL, n_createdAt TEXT NOT NULL, FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE)');
-    
-    // Diğer İlişki Tabloları
     batch.execute('CREATE TABLE Library(l_id INTEGER PRIMARY KEY, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, b_addLibAt TEXT NOT NULL, FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE)');
     batch.execute('CREATE TABLE Book_Author(b_id INTEGER NOT NULL, a_id INTEGER NOT NULL, PRIMARY KEY (b_id, a_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (a_id) REFERENCES Author(a_id) ON DELETE CASCADE)');
     batch.execute('CREATE TABLE Book_Publisher(b_id INTEGER NOT NULL, pbl_id INTEGER NOT NULL, PRIMARY KEY (b_id, pbl_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (pbl_id) REFERENCES Publisher(pbl_id) ON DELETE CASCADE)');
@@ -55,8 +55,6 @@ class DatabaseHelper {
     batch.execute('CREATE TABLE Book_Time(b_id INTEGER NOT NULL, t_id INTEGER NOT NULL, PRIMARY KEY (b_id, t_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (t_id) REFERENCES Time(t_id) ON DELETE CASCADE)');
 
     batch.insert('User', {'u_userName': 'defaultUser'});
-
     await batch.commit(noResult: true);
-    debugPrint("--- TÜM TABLOLAR BAŞARIYLA OLUŞTURULDU (NOTES GÜNCELLENDİ) ---");
   }
 }

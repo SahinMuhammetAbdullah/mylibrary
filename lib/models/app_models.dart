@@ -4,6 +4,7 @@ class Book {
   final String? description;
   final String? coverUrl;
   final String? oWorkId;
+  final int? totalPages; // YENİ ALAN
 
   final List<Author> authors;
   final List<Publisher> publishers;
@@ -15,7 +16,7 @@ class Book {
   Book({
     required this.id, this.name, this.description, this.coverUrl, this.oWorkId,
     this.authors = const [], this.publishers = const [], this.subjects = const [],
-    this.people = const [], this.places = const [], this.times = const [],
+    this.people = const [], this.places = const [], this.times = const [], this.totalPages,
   });
   
   String get authorString => authors.map((a) => a.name).join(', ');

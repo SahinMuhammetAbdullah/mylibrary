@@ -31,7 +31,7 @@ class BookService with ChangeNotifier {
       'n_createdAt':
           DateTime.now().toIso8601String(), // Oluşturulma zamanını ekle
     });
-    notifyDataChanged(); 
+    notifyDataChanged();
   }
 
   // === YENİ NOT LİSTELEME METODU ===
@@ -57,7 +57,7 @@ class BookService with ChangeNotifier {
     final db = await _db.database;
     await db.delete('Books', where: 'b_id = ?', whereArgs: [bookId]);
     await loadLibraryBooks();
-    notifyDataChanged(); 
+    notifyDataChanged();
   }
 
   Future<bool> addBookFromApi(ApiBookSearchResult apiBook) async {
@@ -76,7 +76,8 @@ class BookService with ChangeNotifier {
               ? 'https://covers.openlibrary.org/b/id/${apiBook.coverId}-M.jpg'
               : null,
           'b_description': details?.description,
-          'b_oWorkId': apiBook.workKey
+          'b_oWorkId': apiBook.workKey,
+          'b_totalPages': details?.totalPages, // YENİ: Sayfa sayısını ekle
         });
         for (String name in apiBook.authors) {
           int id = await _getOrInsert(txn, 'Author', 'a_name', 'a_id', name);
@@ -186,6 +187,7 @@ class BookService with ChangeNotifier {
         coverUrl: bookMap['b_coverUrl'] as String?,
         description: bookMap['b_description'] as String?,
         oWorkId: bookMap['b_oWorkId'] as String?,
+        totalPages: bookMap['b_totalPages'] as int?,
         authors: authors,
         publishers: publishers,
         subjects: subjects,
@@ -249,7 +251,7 @@ class BookService with ChangeNotifier {
   Future<void> deleteNote(int noteId) async {
     final db = await _db.database;
     await db.delete('Notes', where: 'n_id = ?', whereArgs: [noteId]);
-    notifyDataChanged(); 
+    notifyDataChanged();
   }
 
   Future<app_models.Book?> findBookInLibraryByWorkId(String workId) async {
