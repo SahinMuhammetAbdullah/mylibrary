@@ -23,39 +23,35 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    debugPrint("--- YENİ VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
+    debugPrint("--- GÜÇLENDİRİLMİŞ VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
     final batch = db.batch();
 
-    // Books Feature Tables
-    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY AUTOINCREMENT, b_name TEXT, b_totalPage TEXT, b_coverUrl TEXT, b_publishDate TEXT, b_description TEXT, b_lang TEXT, b_isbn10 TEXT, b_isbn13 TEXT, b_isbnOL TEXT, b_rating TEXT, b_oWorkId TEXT UNIQUE)');
-    batch.execute('CREATE TABLE Author(a_id INTEGER PRIMARY KEY AUTOINCREMENT, a_name TEXT NOT NULL UNIQUE)');
-    batch.execute('CREATE TABLE Publisher(pbl_id INTEGER PRIMARY KEY AUTOINCREMENT, pbl_name TEXT NOT NULL UNIQUE)');
-    batch.execute('CREATE TABLE Subject(sbj_id INTEGER PRIMARY KEY AUTOINCREMENT, sbj_name TEXT NOT NULL UNIQUE)');
-    batch.execute('CREATE TABLE Person(prs_id INTEGER PRIMARY KEY AUTOINCREMENT, prs_name TEXT NOT NULL UNIQUE)');
-    batch.execute('CREATE TABLE Place(plc_id INTEGER PRIMARY KEY AUTOINCREMENT, plc_name TEXT NOT NULL UNIQUE)');
-    batch.execute('CREATE TABLE Time(t_id INTEGER PRIMARY KEY AUTOINCREMENT, t_name TEXT NOT NULL UNIQUE)');
+    // FOREIGN KEY desteğini etkinleştir
+    await db.execute("PRAGMA foreign_keys = ON");
 
-    // Junction Tables for Books
-    batch.execute('CREATE TABLE Book_Author(b_id INTEGER NOT NULL, a_id INTEGER NOT NULL, PRIMARY KEY (b_id, a_id))');
-    batch.execute('CREATE TABLE Book_Publisher(b_id INTEGER NOT NULL, pbl_id INTEGER NOT NULL, PRIMARY KEY (b_id, pbl_id))');
-    batch.execute('CREATE TABLE Book_Subject(b_id INTEGER NOT NULL, sbj_id INTEGER NOT NULL, PRIMARY KEY (b_id, sbj_id))');
-    
-    // === EKSİK OLAN VE HATAYI ÇÖZEN SATIRLAR ===
-    batch.execute('CREATE TABLE Book_Person(b_id INTEGER NOT NULL, prs_id INTEGER NOT NULL, PRIMARY KEY (b_id, prs_id))');
-    batch.execute('CREATE TABLE Book_Place(b_id INTEGER NOT NULL, plc_id INTEGER NOT NULL, PRIMARY KEY (b_id, plc_id))');
-    batch.execute('CREATE TABLE Book_Time(b_id INTEGER NOT NULL, t_id INTEGER NOT NULL, PRIMARY KEY (b_id, t_id))');
-    // ===========================================
+    // Ana Tablolar
+    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY, b_name TEXT, b_oWorkId TEXT UNIQUE, b_description TEXT, b_coverUrl TEXT)');
+    batch.execute('CREATE TABLE User(u_id INTEGER PRIMARY KEY, u_userName TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Author(a_id INTEGER PRIMARY KEY, a_name TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Publisher(pbl_id INTEGER PRIMARY KEY, pbl_name TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Subject(sbj_id INTEGER PRIMARY KEY, sbj_name TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Person(prs_id INTEGER PRIMARY KEY, prs_name TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Place(plc_id INTEGER PRIMARY KEY, plc_name TEXT NOT NULL UNIQUE)');
+    batch.execute('CREATE TABLE Time(t_id INTEGER PRIMARY KEY, t_name TEXT NOT NULL UNIQUE)');
 
-    // User Feature Tables
-    batch.execute('CREATE TABLE User(u_id INTEGER PRIMARY KEY AUTOINCREMENT, u_userName TEXT NOT NULL UNIQUE, u_name TEXT, u_email TEXT UNIQUE, u_password TEXT, u_age TEXT, u_publicId INTEGER)');
-    batch.execute('CREATE TABLE Library(l_id INTEGER PRIMARY KEY AUTOINCREMENT, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, b_addLibAt TEXT NOT NULL)');
+    // İlişki Tabloları (ON DELETE CASCADE ile)
+    batch.execute('CREATE TABLE Library(l_id INTEGER PRIMARY KEY, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, b_addLibAt TEXT NOT NULL, FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Notes(n_id INTEGER PRIMARY KEY, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, n_text TEXT NOT NULL, FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Author(b_id INTEGER NOT NULL, a_id INTEGER NOT NULL, PRIMARY KEY (b_id, a_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (a_id) REFERENCES Author(a_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Publisher(b_id INTEGER NOT NULL, pbl_id INTEGER NOT NULL, PRIMARY KEY (b_id, pbl_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (pbl_id) REFERENCES Publisher(pbl_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Subject(b_id INTEGER NOT NULL, sbj_id INTEGER NOT NULL, PRIMARY KEY (b_id, sbj_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (sbj_id) REFERENCES Subject(sbj_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Person(b_id INTEGER NOT NULL, prs_id INTEGER NOT NULL, PRIMARY KEY (b_id, prs_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (prs_id) REFERENCES Person(prs_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Place(b_id INTEGER NOT NULL, plc_id INTEGER NOT NULL, PRIMARY KEY (b_id, plc_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (plc_id) REFERENCES Place(plc_id) ON DELETE CASCADE)');
+    batch.execute('CREATE TABLE Book_Time(b_id INTEGER NOT NULL, t_id INTEGER NOT NULL, PRIMARY KEY (b_id, t_id), FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, FOREIGN KEY (t_id) REFERENCES Time(t_id) ON DELETE CASCADE)');
 
-    // App Feature Tables
-    batch.execute('CREATE TABLE Notes(n_id INTEGER PRIMARY KEY AUTOINCREMENT, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, n_text TEXT NOT NULL)');
-
-    batch.insert('User', {'u_userName': 'defaultUser', 'u_name': 'Kullanıcı'});
+    batch.insert('User', {'u_userName': 'defaultUser'});
 
     await batch.commit(noResult: true);
-    debugPrint("--- TÜM TABLOLAR BAŞARIYLA OLUŞTURULDU ---");
+    debugPrint("--- TÜM TABLOLAR BAŞARIYLA OLUŞTURULDU (CASCADE ENABLED) ---");
   }
 }

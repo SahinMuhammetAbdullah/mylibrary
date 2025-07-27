@@ -18,7 +18,16 @@ class BookService with ChangeNotifier {
   BookService() {
     loadLibraryBooks();
   }
-
+  Future<void> deleteBook(int bookId) async {
+    final db = await _db.database;
+    // ON DELETE CASCADE kuralı sayesinde, sadece Books tablosundan silmemiz yeterlidir.
+    // Veritabanı, bu kitaba bağlı tüm Library, Notes, Book_Author vb. kayıtlarını
+    // otomatik olarak silecektir.
+    await db.delete('Books', where: 'b_id = ?', whereArgs: [bookId]);
+    
+    // Silme işleminden sonra kütüphane listesini yeniden yükleyerek arayüzü güncelle.
+    await loadLibraryBooks();
+  }
   Future<bool> addBookFromApi(ApiBookSearchResult apiBook) async {
     final db = await _db.database;
     final existingBooks = await db.query('Books', where: 'b_oWorkId = ?', whereArgs: [apiBook.workKey], limit: 1);

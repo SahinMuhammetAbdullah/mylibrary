@@ -35,6 +35,54 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     super.dispose();
   }
 
+  Future<void> _showDeleteConfirmationDialog() async {
+    // Kitap kütüphanede değilse veya bilgileri henüz yüklenmediyse işlemi iptal et.
+    if (!_isBookInLibrary || _book == null) return;
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible:
+          false, // Kullanıcının dışarı tıklayarak kapatmasını engelle
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Kitabı Sil'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(
+                    "'${_book!.name ?? 'Bu kitap'}' kütüphaneden kalıcı olarak silinecektir."),
+                const SizedBox(height: 8),
+                const Text('Bu işlem geri alınamaz. Emin misiniz?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('İptal'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Diyaloğu kapat
+              },
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Sil'),
+              onPressed: () async {
+                // Silme işlemini başlat
+                await context.read<BookService>().deleteBook(_book!.id);
+
+                // Bu widget'ın hala "mounted" olduğunu kontrol et
+                if (!mounted) return;
+
+                Navigator.of(dialogContext).pop(); // Diyaloğu kapat
+                Navigator.of(context).pop(); // Detay sayfasını kapat
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _loadData() async {
     final bookService = context.read<BookService>();
     app_models.Book? loadedBook;
@@ -170,13 +218,19 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       pinned: true,
       elevation: 1,
       actions: [
+        // Kütüphaneye Ekle Butonu (sadece kitap kütüphanede değilse görünür)
         if (!_isBookInLibrary)
-          Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: IconButton(
-                  icon: const Icon(Icons.add_circle),
-                  tooltip: 'Kütüphaneye Ekle',
-                  onPressed: _addBookToLibrary))
+          IconButton(
+              icon: const Icon(Icons.add_circle),
+              tooltip: 'Kütüphaneye Ekle',
+              onPressed: _addBookToLibrary),
+
+        // === YENİ: SİLME BUTONU (sadece kitap kütüphanedeyse görünür) ===
+        if (_isBookInLibrary)
+          IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Kitabı Sil',
+              onPressed: _showDeleteConfirmationDialog),
       ],
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
