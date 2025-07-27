@@ -1,3 +1,4 @@
+// lib/helpers/database_helper.dart
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -26,14 +27,7 @@ class DatabaseHelper {
     final batch = db.batch();
 
     // Books Feature Tables
-    batch.execute('''
-      CREATE TABLE Books(
-        b_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        b_name TEXT, b_totalPage TEXT, b_coverUrl TEXT, b_publishDate TEXT,
-        b_description TEXT, b_lang TEXT, b_isbn10 TEXT, b_isbn13 TEXT,
-        b_isbnOL TEXT, b_rating TEXT, b_oWorkId TEXT UNIQUE
-      )
-    ''');
+    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY AUTOINCREMENT, b_name TEXT, b_totalPage TEXT, b_coverUrl TEXT, b_publishDate TEXT, b_description TEXT, b_lang TEXT, b_isbn10 TEXT, b_isbn13 TEXT, b_isbnOL TEXT, b_rating TEXT, b_oWorkId TEXT UNIQUE)');
     batch.execute('CREATE TABLE Author(a_id INTEGER PRIMARY KEY AUTOINCREMENT, a_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Publisher(pbl_id INTEGER PRIMARY KEY AUTOINCREMENT, pbl_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Subject(sbj_id INTEGER PRIMARY KEY AUTOINCREMENT, sbj_name TEXT NOT NULL UNIQUE)');
@@ -45,31 +39,20 @@ class DatabaseHelper {
     batch.execute('CREATE TABLE Book_Author(b_id INTEGER NOT NULL, a_id INTEGER NOT NULL, PRIMARY KEY (b_id, a_id))');
     batch.execute('CREATE TABLE Book_Publisher(b_id INTEGER NOT NULL, pbl_id INTEGER NOT NULL, PRIMARY KEY (b_id, pbl_id))');
     batch.execute('CREATE TABLE Book_Subject(b_id INTEGER NOT NULL, sbj_id INTEGER NOT NULL, PRIMARY KEY (b_id, sbj_id))');
+    
+    // === EKSİK OLAN VE HATAYI ÇÖZEN SATIRLAR ===
+    batch.execute('CREATE TABLE Book_Person(b_id INTEGER NOT NULL, prs_id INTEGER NOT NULL, PRIMARY KEY (b_id, prs_id))');
+    batch.execute('CREATE TABLE Book_Place(b_id INTEGER NOT NULL, plc_id INTEGER NOT NULL, PRIMARY KEY (b_id, plc_id))');
+    batch.execute('CREATE TABLE Book_Time(b_id INTEGER NOT NULL, t_id INTEGER NOT NULL, PRIMARY KEY (b_id, t_id))');
+    // ===========================================
 
     // User Feature Tables
-    batch.execute('''
-      CREATE TABLE User(
-        u_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        u_userName TEXT NOT NULL UNIQUE, u_name TEXT, u_email TEXT UNIQUE,
-        u_password TEXT, u_age TEXT, u_publicId INTEGER
-      )
-    ''');
-    batch.execute('''
-      CREATE TABLE Library(
-        l_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, b_addLibAt TEXT NOT NULL
-      )
-    ''');
+    batch.execute('CREATE TABLE User(u_id INTEGER PRIMARY KEY AUTOINCREMENT, u_userName TEXT NOT NULL UNIQUE, u_name TEXT, u_email TEXT UNIQUE, u_password TEXT, u_age TEXT, u_publicId INTEGER)');
+    batch.execute('CREATE TABLE Library(l_id INTEGER PRIMARY KEY AUTOINCREMENT, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, b_addLibAt TEXT NOT NULL)');
 
     // App Feature Tables
-    batch.execute('''
-      CREATE TABLE Notes(
-        n_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, n_text TEXT NOT NULL
-      )
-    ''');
+    batch.execute('CREATE TABLE Notes(n_id INTEGER PRIMARY KEY AUTOINCREMENT, u_id INTEGER NOT NULL, b_id INTEGER NOT NULL, n_text TEXT NOT NULL)');
 
-    // Insert a default user for the app to work with
     batch.insert('User', {'u_userName': 'defaultUser', 'u_name': 'Kullanıcı'});
 
     await batch.commit(noResult: true);

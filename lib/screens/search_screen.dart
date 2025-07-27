@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/book_service.dart';
 import '../services/open_library_service.dart';
+import 'book_detail_screen.dart'; // Navigasyon için bu import gerekli
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -18,7 +19,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   String _message = 'Aramak için kitap veya yazar adı girin.';
   Timer? _debounce;
-  final Set<String> _addingKeys = {}; // To track books being added
+  final Set<String> _addingKeys = {};
 
   @override
   void initState() {
@@ -45,12 +46,10 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() { _isLoading = true; _message = ''; });
     try {
       final results = await _apiService.searchBooks(_searchController.text);
-      if (mounted) {
-        setState(() {
-          _searchResults = results;
-          if (results.isEmpty) _message = 'Aramanızla eşleşen sonuç bulunamadı.';
-        });
-      }
+      if (mounted) setState(() {
+        _searchResults = results;
+        if (results.isEmpty) _message = 'Aramanızla eşleşen sonuç bulunamadı.';
+      });
     } catch (e) {
       if (mounted) setState(() { _message = 'Bir hata oluştu: ${e.toString()}'; });
     } finally {
@@ -60,18 +59,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _addBook(ApiBookSearchResult book) async {
     if (_addingKeys.contains(book.workKey)) return;
-
     setState(() => _addingKeys.add(book.workKey));
-    
     final bookService = context.read<BookService>();
     final success = await bookService.addBookFromApi(book);
-    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? "'${book.title}' kütüphaneye eklendi!" : "'${book.title}' zaten kütüphanede."),
-          backgroundColor: success ? Colors.green : Colors.orange,
-        ),
+        SnackBar(content: Text(success ? "'${book.title}' kütüphaneye eklendi!" : "'${book.title}' zaten kütüphanede."),
+        backgroundColor: success ? Colors.green : Colors.orange),
       );
       setState(() => _addingKeys.remove(book.workKey));
     }
@@ -81,14 +75,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Kitap veya yazar ara...',
-            border: InputBorder.none,
-          ),
-        ),
+        title: TextField(controller: _searchController, autofocus: true, decoration: const InputDecoration(hintText: 'Kitap veya yazar ara...', border: InputBorder.none)),
       ),
       body: _buildBody(),
     );
@@ -96,7 +83,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildBody() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-
     if (_searchResults.isNotEmpty) {
       return ListView.builder(
         padding: const EdgeInsets.all(8.0),
@@ -107,30 +93,20 @@ class _SearchScreenState extends State<SearchScreen> {
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
-              leading: book.coverId != null
-                  ? Image.network('https://covers.openlibrary.org/b/id/${book.coverId}-S.jpg', fit: BoxFit.cover)
-                  : Icon(Icons.book_outlined, color: Theme.of(context).colorScheme.secondary),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => BookDetailScreen(apiBook: book)));
+              },
+              leading: book.coverId != null ? Image.network('https://covers.openlibrary.org/b/id/${book.coverId}-S.jpg', fit: BoxFit.cover) : Icon(Icons.book_outlined, color: Theme.of(context).colorScheme.secondary),
               title: Text(book.title),
               subtitle: Text(book.authors.join(', ')),
               trailing: isAdding
                   ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                  : IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: Theme.of(context).colorScheme.primary,
-                      tooltip: 'Kütüphaneye Ekle',
-                      onPressed: () => _addBook(book),
-                    ),
+                  : IconButton(icon: const Icon(Icons.add_circle_outline), color: Theme.of(context).colorScheme.primary, tooltip: 'Kütüphaneye Ekle', onPressed: () => _addBook(book)),
             ),
           );
         },
       );
     }
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(_message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
-      ),
-    );
+    return Center(child: Padding(padding: const EdgeInsets.all(16.0), child: Text(_message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall)));
   }
 }
