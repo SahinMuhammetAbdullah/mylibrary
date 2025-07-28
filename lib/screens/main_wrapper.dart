@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_library/screens/all_notes_screen.dart';
-import 'home_screen.dart';
+import 'package:my_library/screens/home_screen.dart';
+import 'package:my_library/screens/stats_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   final Function(ThemeMode) changeTheme;
@@ -16,7 +17,7 @@ class _MainWrapperState extends State<MainWrapper> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const AllNotesScreen(), // Placeholder yerine yeni ekranı koy
-    const Scaffold(body: Center(child: Text("Okumalar (Yapım Aşamasında)"))),
+    const StatsScreen(),
     const Scaffold(body: Center(child: Text("Profil (Yapım Aşamasında)"))),
   ];
 
