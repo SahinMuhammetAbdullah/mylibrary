@@ -128,6 +128,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           // === HATAYI DÜZELTEN SATIR ===
           totalPages: details?.totalPages,
           // ==============================
+          publishDate: details?.publishDate,
           publishers: (details?.publishers ?? [])
               .map((name) => app_models.Publisher(id: -1, name: name))
               .toList(),
@@ -174,23 +175,19 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           if (_book == null)
             return const Center(child: Text("Kitap bulunamadı."));
 
+          // CustomScrollView, tüm içeriği kaydırılabilir hale getirir.
           return CustomScrollView(
             slivers: [
               _buildSliverAppBar(),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      16, 16, 16, 80), // Fab için boşluk
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              // SliverToBoxAdapter ve Column yerine SliverList kullanıyoruz.
+              // Bu, içeriğin ekranı aşması durumunda sorunsuzca kaydırılmasını sağlar.
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate(
+                    [
                       _buildAuthorAndPublisherInfo(),
                       _buildSubjectsExpansionTile(),
-                      _buildDetailSection(
-                          title: 'Yayıncılar',
-                          chips: _book!.publishers
-                              .map((p) => Chip(label: Text(p.name)))
-                              .toList()),
                       const SizedBox(height: 16),
                       _buildSectionTitle('Açıklama'),
                       _buildDescription(),
@@ -268,54 +265,60 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-// === YENİ EKLENEN WIDGET ===
   Widget _buildAuthorAndPublisherInfo() {
     final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_book!.authors.isNotEmpty)
+          Text(_book!.authorString,
+              style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold)),
 
-    // Yazar, yayıncı veya sayfa bilgisi yoksa hiçbir şey gösterme
-    if (_book!.authors.isEmpty &&
-        _book!.publishers.isEmpty &&
-        (_book!.totalPages == null || _book!.totalPages == 0)) {
-      return const SizedBox.shrink();
-    }
+        const SizedBox(height: 8),
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_book!.authors.isNotEmpty)
-            Text(_book!.authorString,
-                style: theme.textTheme.titleLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold)),
-
-          const SizedBox(height: 8),
-
-          if (_book!.publishers.isNotEmpty)
-            Text('Yayıncı: ${_book!.publishers.map((p) => p.name).join(', ')}',
-                style: theme.textTheme.bodyLarge),
-
-          // YENİ: SAYFA SAYISI GÖSTERİMİ
-          if (_book!.totalPages != null && _book!.totalPages! > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Row(
-                children: [
-                  Icon(Icons.pages_outlined,
-                      size: 16, color: theme.textTheme.bodySmall?.color),
-                  const SizedBox(width: 6),
-                  Text('${_book!.totalPages} sayfa',
-                      style: theme.textTheme.bodyLarge),
-                ],
+        // Wrap, Row'dan daha esnektir. Çocukları sığmazsa alt satıra kaydırır.
+        Wrap(
+          spacing: 16.0, // Yatay boşluk
+          runSpacing: 8.0, // Dikey boşluk (alt satıra kayarsa)
+          children: [
+            if (_book!.publishers.isNotEmpty)
+              _buildInfoItem(
+                icon: Icons.business_outlined,
+                text:
+                    'Yayıncı: ${_book!.publishers.map((p) => p.name).join(', ')}',
               ),
-            ),
-        ],
-      ),
+            if (_book!.totalPages != null && _book!.totalPages! > 0)
+              _buildInfoItem(
+                icon: Icons.pages_outlined,
+                text: '${_book!.totalPages} sayfa',
+              ),
+            if (_book!.publishDate != null && _book!.publishDate!.isNotEmpty)
+              _buildInfoItem(
+                icon: Icons.calendar_today_outlined,
+                text: 'Yayın: ${_book!.publishDate}',
+              ),
+          ],
+        ),
+        const SizedBox(height: 16.0),
+      ],
     );
   }
 
-  // ============================
+  // Tekrarlanan kodu önlemek için yardımcı widget
+  Widget _buildInfoItem({required IconData icon, required String text}) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize
+          .min, // Row'un sadece içindekiler kadar yer kaplamasını sağlar
+      children: [
+        Icon(icon, size: 16, color: theme.textTheme.bodySmall?.color),
+        const SizedBox(width: 6),
+        Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
+      ],
+    );
+  }
 
   Widget _buildSubjectsExpansionTile() {
     if (_book!.subjects.isEmpty) return const SizedBox.shrink();

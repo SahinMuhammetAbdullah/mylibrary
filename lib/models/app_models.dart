@@ -12,13 +12,23 @@ class Book {
   final List<Person> people;
   final List<Place> places;
   final List<Time> times;
-
+  final String? publishDate;
   Book({
-    required this.id, this.name, this.description, this.coverUrl, this.oWorkId,
-    this.authors = const [], this.publishers = const [], this.subjects = const [],
-    this.people = const [], this.places = const [], this.times = const [], this.totalPages,
+    required this.id,
+    this.name,
+    this.description,
+    this.coverUrl,
+    this.oWorkId,
+    this.authors = const [],
+    this.publishers = const [],
+    this.subjects = const [],
+    this.people = const [],
+    this.places = const [],
+    this.times = const [],
+    this.totalPages,
+    this.publishDate,
   });
-  
+
   String get authorString => authors.map((a) => a.name).join(', ');
 }
 
@@ -64,5 +74,9 @@ class Note {
   final String text;
   final String bookTitle;
 
-  Note({required this.id, required this.bookId, required this.text, required this.bookTitle});
+  Note(
+      {required this.id,
+      required this.bookId,
+      required this.text,
+      required this.bookTitle});
 }

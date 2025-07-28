@@ -20,7 +20,6 @@ class ApiBookSearchResult {
   }
 }
 
-// Bu sınıfta değişiklik yok.
 class ApiBookDetails {
   final String? description;
   final List<String> publishers;
@@ -28,14 +27,16 @@ class ApiBookDetails {
   final List<String> people;
   final List<String> places;
   final List<String> times;
-  final int? totalPages; // YENİ ALAN
+  final int? totalPages;
+  final String? publishDate;
 
-  ApiBookDetails({this.description, required this.publishers, required this.subjects, required this.people, required this.places, required this.times, this.totalPages});
+  ApiBookDetails({this.description, required this.publishers, required this.subjects, required this.people, required this.places, required this.times, this.totalPages, this.publishDate});
 
   factory ApiBookDetails.fromJson({
     required Map<String, dynamic> workJson,
     required List<String> fetchedPublishers,
-    required int? fetchedPageCount, // YENİ PARAMETRE
+    required int? fetchedPageCount,
+    required String? fetchedPublishDate,
   }) {
     String desc = '';
     if (workJson['description'] is String) { desc = workJson['description']; } 
@@ -48,11 +49,11 @@ class ApiBookDetails {
       people: (workJson['subject_people'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       places: (workJson['subject_places'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       times: (workJson['subject_times'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
-      totalPages: fetchedPageCount, // YENİ ATAMA
+      totalPages: fetchedPageCount,
+      publishDate: fetchedPublishDate,
     );
   }
 }
-
 
 class OpenLibraryService {
   final String _searchUrl = 'https://openlibrary.org/search.json';
@@ -76,8 +77,7 @@ class OpenLibraryService {
     }
   }
 
-  // === BU METOT HATAYI GİDERMEK İÇİN TAMAMEN GÜNCELLENDİ ===
-  Future<ApiBookDetails?> getBookDetails(String workKey) async {
+Future<ApiBookDetails?> getBookDetails(String workKey) async {
     if (!workKey.startsWith('/works/')) return null;
     try {
       final workUri = Uri.parse('$_baseUrl$workKey.json');
@@ -88,35 +88,50 @@ class OpenLibraryService {
       final editionsUri = Uri.parse('$_baseUrl$workKey/editions.json?limit=5');
       final editionsResponse = await http.get(editionsUri);
       List<String> fetchedPublishers = [];
-      int? fetchedPageCount; // Sayfa sayısını tutacak değişken
+      int? fetchedPageCount;
+      String? fetchedPublishDate;
 
       if (editionsResponse.statusCode == 200) {
         final editionsJson = json.decode(editionsResponse.body);
         final entries = editionsJson['entries'] as List<dynamic>? ?? [];
         for (var edition in entries) {
-          // Yayıncıyı bul
           if (fetchedPublishers.isEmpty) {
             final publishers = edition['publishers'] as List<dynamic>?;
             if (publishers != null && publishers.isNotEmpty) {
               fetchedPublishers = publishers.map((p) => p.toString()).toList();
             }
           }
-          // Sayfa sayısını bul
           if (fetchedPageCount == null) {
             final pageCount = edition['number_of_pages'];
             if (pageCount is int && pageCount > 0) {
               fetchedPageCount = pageCount;
             }
           }
-          // İkisini de bulduysak döngüden çıkabiliriz.
-          if (fetchedPublishers.isNotEmpty && fetchedPageCount != null) break;
+          if (fetchedPublishDate == null) {
+            final date = edition['publish_date'];
+            if (date is String && date.isNotEmpty) {
+              fetchedPublishDate = date;
+            }
+          }
+          if (fetchedPublishers.isNotEmpty && fetchedPageCount != null && fetchedPublishDate != null) break;
         }
       }
+
+      // === YEDEKLEME MEKANİZMASI ===
+      // Eğer baskılardan bir tarih bulunamadıysa, ana "work" objesindeki ilk yayın tarihini ara.
+      if (fetchedPublishDate == null) {
+        final firstPublishDate = workJson['first_publish_date'];
+        if (firstPublishDate is String && firstPublishDate.isNotEmpty) {
+          fetchedPublishDate = firstPublishDate;
+        }
+      }
+      // ============================
 
       return ApiBookDetails.fromJson(
         workJson: workJson,
         fetchedPublishers: fetchedPublishers,
-        fetchedPageCount: fetchedPageCount, // Yeni parametreyi geç
+        fetchedPageCount: fetchedPageCount,
+        fetchedPublishDate: fetchedPublishDate,
       );
     } catch (e) {
       print("Could not fetch complete details for $workKey: $e");

@@ -28,16 +28,15 @@ class DatabaseHelper {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
-Future<void> _onCreate(Database db, int version) async {
-    debugPrint("--- SAYFA SAYISI EKlenmiş VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
+  Future<void> _onCreate(Database db, int version) async {
+    debugPrint("--- YAYIN TARİHİ EKLENMİŞ VERİTABANI ŞEMASI OLUŞTURULUYOR (_onCreate) ---");
     final batch = db.batch();
-
     await db.execute("PRAGMA foreign_keys = ON");
 
     // === BOOKS TABLOSU GÜNCELLENDİ ===
-    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY, b_name TEXT, b_oWorkId TEXT UNIQUE, b_description TEXT, b_coverUrl TEXT, b_totalPages INTEGER)');
+    batch.execute('CREATE TABLE Books(b_id INTEGER PRIMARY KEY, b_name TEXT, b_oWorkId TEXT UNIQUE, b_description TEXT, b_coverUrl TEXT, b_totalPages INTEGER, b_publishDate TEXT)');
     
-    // Diğer tablolar aynı kalır
+    // ... Diğer tablolar aynı kalır ...
     batch.execute('CREATE TABLE User(u_id INTEGER PRIMARY KEY, u_userName TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Author(a_id INTEGER PRIMARY KEY, a_name TEXT NOT NULL UNIQUE)');
     batch.execute('CREATE TABLE Publisher(pbl_id INTEGER PRIMARY KEY, pbl_name TEXT NOT NULL UNIQUE)');

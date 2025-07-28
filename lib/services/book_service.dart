@@ -77,7 +77,8 @@ class BookService with ChangeNotifier {
               : null,
           'b_description': details?.description,
           'b_oWorkId': apiBook.workKey,
-          'b_totalPages': details?.totalPages, // YENİ: Sayfa sayısını ekle
+          'b_totalPages': details?.totalPages,
+          'b_publishDate': details?.publishDate,
         });
         for (String name in apiBook.authors) {
           int id = await _getOrInsert(txn, 'Author', 'a_name', 'a_id', name);
@@ -188,6 +189,7 @@ class BookService with ChangeNotifier {
         description: bookMap['b_description'] as String?,
         oWorkId: bookMap['b_oWorkId'] as String?,
         totalPages: bookMap['b_totalPages'] as int?,
+        publishDate: bookMap['b_publishDate'] as String?,
         authors: authors,
         publishers: publishers,
         subjects: subjects,
