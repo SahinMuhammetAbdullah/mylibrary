@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:reading_tracker_v2/screens/all_notes_screen.dart';
+import 'package:my_library/screens/all_notes_screen.dart';
 import 'home_screen.dart';
 
 class MainWrapper extends StatefulWidget {

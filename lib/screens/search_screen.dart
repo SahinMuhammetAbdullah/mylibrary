@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // <<< HATA İÇİN EKLENEN IMPORT
 import 'package:provider/provider.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
-import '../services/book_service.dart';
-import '../services/open_library_service.dart';
+import 'package:my_library/services/book_service.dart';
+import 'package:my_library/services/open_library_service.dart';
 import 'book_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {

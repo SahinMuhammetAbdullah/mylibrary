@@ -1,10 +1,10 @@
 // lib/services/book_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
-import '../helpers/database_helper.dart';
-import '../models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
-import '../services/open_library_service.dart';
-import '../helpers/data_notifier.dart'; // YENİ: Notifier'ı import et
+import 'package:my_library/helpers/database_helper.dart';
+import 'package:my_library/models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
+import 'package:my_library/services/open_library_service.dart';
+import 'package:my_library/helpers/data_notifier.dart'; // YENİ: Notifier'ı import et
 
 class BookService with ChangeNotifier {
   // ... (mevcut kodun başı aynı) ...

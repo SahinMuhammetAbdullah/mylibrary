@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
-import '../services/book_service.dart';
-import '../services/open_library_service.dart';
+import 'package:my_library/models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
+import 'package:my_library/services/book_service.dart';
+import 'package:my_library/services/open_library_service.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final int? bookId;

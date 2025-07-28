@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
-import 'helpers/database_helper.dart';
-import 'screens/main_wrapper.dart';
-import 'services/book_service.dart';
-import 'theme/app_theme.dart'; // Yeni tema dosyamızı import ediyoruz
+import 'package:my_library/helpers/database_helper.dart';
+import 'package:my_library/screens/main_wrapper.dart';
+import 'package:my_library/services/book_service.dart';
+import 'package:my_library/theme/app_theme.dart'; // Yeni tema dosyamızı import ediyoruz
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

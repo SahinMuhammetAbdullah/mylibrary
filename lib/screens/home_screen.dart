@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/book_service.dart';
-import '../widgets/book_card.dart';
+import 'package:my_library/services/book_service.dart';
+import 'package:my_library/widgets/book_card.dart';
 import 'search_screen.dart';
 import 'book_detail_screen.dart';
 

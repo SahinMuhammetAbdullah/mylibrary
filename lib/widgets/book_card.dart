@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
+import 'package:my_library/models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
 
 class BookCard extends StatelessWidget {
   final app_models.Book book;

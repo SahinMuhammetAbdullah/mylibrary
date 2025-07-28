@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../helpers/data_notifier.dart';
-import '../services/book_service.dart';
+import 'package:my_library/helpers/data_notifier.dart';
+import 'package:my_library/services/book_service.dart';
 
 class AllNotesScreen extends StatefulWidget {
   const AllNotesScreen({super.key});
