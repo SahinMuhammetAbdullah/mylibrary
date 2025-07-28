@@ -192,6 +192,7 @@ class BookService with ChangeNotifier {
     }
     await updateAnalytics(analytics);
     await loadLibraryBooks();
+    notifyDataChanged(); 
   }
 
   // --- VERİ ÇEKME METOTLARI ---

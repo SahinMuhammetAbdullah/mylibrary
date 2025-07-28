@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:my_library/models/models.dart' as app_models;
 import 'package:my_library/services/book_service.dart';
+import 'package:my_library/helpers/data_notifier.dart'; 
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -18,13 +19,34 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _statsFuture = context.read<BookService>().getStats();
+    _loadStats();
+    // Global veri değişikliği bildirimini dinlemeye başla.
+    dataChangeNotifier.addListener(_onDataChanged);
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
+    // Bellek sızıntılarını önlemek için dinleyiciyi kaldır.
+    dataChangeNotifier.removeListener(_onDataChanged);
     super.dispose();
+  }
+
+  // Bildirim geldiğinde bu metot çalışır.
+  void _onDataChanged() {
+    if (mounted) {
+      // İstatistikleri yeniden yükleyerek ekranı güncelle.
+      _loadStats();
+    }
+  }
+  
+  // İstatistikleri yükleme işlemini ayrı bir metoda taşıdık.
+  void _loadStats() {
+    if(mounted) {
+      setState(() {
+        _statsFuture = context.read<BookService>().getStats();
+      });
+    }
   }
 
   @override

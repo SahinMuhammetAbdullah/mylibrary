@@ -2,14 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:my_library/services/book_service.dart';
 import 'package:my_library/widgets/book_card.dart';
-import 'search_screen.dart';
-import 'book_detail_screen.dart';
-
-class HomeScreen extends StatelessWidget {
+import 'package:my_library/screens/search_screen.dart';
+import 'package:my_library/screens/book_detail_screen.dart';
+import 'package:my_library/helpers/data_notifier.dart'; 
+// StatefulWidget'a dönüştürüyoruz ki initState ve dispose kullanabilelim.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    // Global veri değişikliği bildirimini dinlemeye başla.
+    dataChangeNotifier.addListener(_onDataChanged);
+  }
+
+  @override
+  void dispose() {
+    // Bellek sızıntılarını önlemek için dinleyiciyi kaldır.
+    dataChangeNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  // Bildirim geldiğinde bu metot çalışır.
+  void _onDataChanged() {
+    if (mounted) {
+      // BookService'in kütüphane listesini yeniden yüklemesini tetikle.
+      // Bu, provider'ı dinleyen tüm widget'ları (bu ekran dahil) güncelleyecektir.
+      context.read<BookService>().loadLibraryBooks();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // 'watch' kullanmak, BookService'deki değişikliklerin (loadLibraryBooks sonrası)
+    // bu ekranı otomatik olarak yeniden çizmesini sağlar.
     final bookService = context.watch<BookService>();
     final books = bookService.libraryBooks;
 
@@ -36,9 +68,8 @@ class HomeScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final book = books[index];
                     return BookCard(
-                      book: book, 
+                      book: book,
                       onTap: () {
-                        // === YENİ EKLENEN NAVİGASYON ===
                         Navigator.push(
                           context,
                           MaterialPageRoute(
