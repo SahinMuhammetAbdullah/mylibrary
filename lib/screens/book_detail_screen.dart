@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:my_library/models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
+import 'package:my_library/models/models.dart'
+    as app_models; // Neredeyse tüm dosyalar için;
 import 'package:my_library/services/book_service.dart';
 import 'package:my_library/services/open_library_service.dart';
 
@@ -161,6 +162,28 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     await _loadData();
   }
 
+  Future<void> _updateProgress(double value) async {
+    if (_book?.analytics == null) return;
+    setState(() {
+      _book!.analytics!.currentPage = value.round();
+    });
+  }
+
+  Future<void> _saveProgress() async {
+    if (_book?.analytics == null) return;
+    final analytics = _book!.analytics!;
+    // Eğer slider sona geldiyse kitabı tamamlandı olarak işaretle
+    if (analytics.currentPage >= (_book!.totalPages ?? 0)) {
+      await context
+          .read<BookService>()
+          .changeBookStatus(analytics, 'completed');
+    } else {
+      await context.read<BookService>().updateAnalytics(analytics);
+    }
+    // Veriyi yeniden yükleyerek güncel hali al
+    _loadData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,6 +210,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   delegate: SliverChildListDelegate(
                     [
                       _buildAuthorAndPublisherInfo(),
+                      const SizedBox(height: 24),
+                      _buildStatusActions(), // YENİ: Durum değiştirme butonları
+                      const SizedBox(height: 16),
+                      _buildProgressBar(), // YENİ: İlerleme çubuğu
+                      const SizedBox(height: 16),
+                      _buildSubjectsExpansionTile(),
+
                       _buildSubjectsExpansionTile(),
                       const SizedBox(height: 16),
                       _buildSectionTitle('Açıklama'),
@@ -466,5 +496,76 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         );
       },
     );
+  }
+
+Widget _buildProgressBar() {
+    final analytics = _book?.analytics;
+    final totalPages = _book?.totalPages;
+
+    if (analytics == null || analytics.status != 'reading' || totalPages == null || totalPages == 0) {
+      return const SizedBox.shrink();
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Okuma İlerlemesi'),
+        Slider(
+          value: analytics.currentPage.toDouble().clamp(0, totalPages.toDouble()),
+          max: totalPages.toDouble(),
+          divisions: totalPages > 0 ? totalPages : 1,
+          label: analytics.currentPage.toString(),
+          onChanged: _updateProgress,
+          onChangeEnd: (value) => _saveProgress(),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${analytics.currentPage} / $totalPages'),
+              Text('%${(analytics.currentPage / totalPages * 100).toStringAsFixed(0)} tamamlandı'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusActions() {
+    final analytics = _book?.analytics;
+    if (analytics == null || !_isBookInLibrary) return const SizedBox.shrink();
+    
+    final bookService = context.read<BookService>();
+    
+    if(analytics.status == 'wishlist') {
+      return Center(
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Okumaya Başla'),
+          onPressed: () async {
+            await bookService.changeBookStatus(analytics, 'reading');
+            _loadData(); // Ekranı güncelle
+          },
+        ),
+      );
+    }
+    
+    if(analytics.status == 'reading') {
+      return Center(
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.check_circle),
+          label: const Text('Okundu Olarak İşaretle'),
+          style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
+          onPressed: () async {
+            await bookService.changeBookStatus(analytics, 'completed');
+            _loadData(); // Ekranı güncelle
+          },
+        ),
+      );
+    }
+    
+    // Kitap tamamlandıysa bir şey göstermeye gerek yok (veya tekrar başla butonu eklenebilir)
+    return const SizedBox.shrink();
   }
 }
