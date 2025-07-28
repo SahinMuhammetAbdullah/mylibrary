@@ -192,7 +192,7 @@ class BookService with ChangeNotifier {
     }
     await updateAnalytics(analytics);
     await loadLibraryBooks();
-    notifyDataChanged(); 
+    notifyDataChanged();
   }
 
   // --- VERİ ÇEKME METOTLARI ---
@@ -302,54 +302,73 @@ class BookService with ChangeNotifier {
     final db = await _db.database;
     final allAnalytics = await db
         .query('Analytics', where: 'u_id = ?', whereArgs: [_currentUserId]);
-    final completedBooks =
-        allAnalytics.where((m) => m['a_status'] == 'completed');
-    final booksReadCount = completedBooks.length;
+
+    // 1. Tamamlanmış kitapları bul
+    final completedBooksAnalytics =
+        allAnalytics.where((m) => m['a_status'] == 'completed').toList();
+    final booksReadCount = completedBooksAnalytics.length;
+
     int totalPagesRead = 0;
-    if (booksReadCount > 0) {
-      final bookIds = completedBooks.map((m) => m['b_id']).toList();
+
+    // 2. Tamamlanmış kitapların TOPLAM sayfa sayılarını topla
+    if (completedBooksAnalytics.isNotEmpty) {
+      final bookIds = completedBooksAnalytics.map((m) => m['b_id']).toList();
       final pageCounts = await db.query('Books',
           columns: ['b_totalPages'],
           where: 'b_id IN (${bookIds.map((_) => '?').join(',')})',
           whereArgs: bookIds);
-      totalPagesRead = pageCounts.fold(
+      totalPagesRead += pageCounts.fold(
           0, (sum, map) => sum + (map['b_totalPages'] as int? ?? 0));
     }
+
+    // 3. Okunmakta olan kitapları bul
+    final readingBooksAnalytics =
+        allAnalytics.where((m) => m['a_status'] == 'reading').toList();
+
+    // 4. Okunmakta olan kitapların MEVCUT sayfa sayılarını (`a_currentPage`) topla
+    if (readingBooksAnalytics.isNotEmpty) {
+      totalPagesRead += readingBooksAnalytics.fold(
+          0, (sum, map) => sum + (map['a_currentPage'] as int? ?? 0));
+    }
+
+    // 5. Periyotlara göre tamamlanmış kitap sayılarını hesapla (Bu mantık aynı kalır)
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
     final startOfMonth = DateTime(now.year, now.month, 1);
     final startOfYear = DateTime(now.year, 1, 1);
-    int booksToday = completedBooks
+    int booksToday = completedBooksAnalytics
         .where((m) =>
             m['a_finishedAt'] != null &&
             DateTime.parse(m['a_finishedAt'] as String).isAfter(today))
         .length;
-    int booksWeek = completedBooks
+    int booksWeek = completedBooksAnalytics
         .where((m) =>
             m['a_finishedAt'] != null &&
             DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfWeek))
         .length;
-    int booksMonth = completedBooks
+    int booksMonth = completedBooksAnalytics
         .where((m) =>
             m['a_finishedAt'] != null &&
             DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfMonth))
         .length;
-    int booksYear = completedBooks
+    int booksYear = completedBooksAnalytics
         .where((m) =>
             m['a_finishedAt'] != null &&
             DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfYear))
         .length;
+
     return StatsData(
-        totalBooks: allAnalytics.length,
-        booksRead: booksReadCount,
-        pagesRead: totalPagesRead,
-        booksReadByPeriod: {
-          'daily': booksToday,
-          'weekly': booksWeek,
-          'monthly': booksMonth,
-          'yearly': booksYear
-        });
+      totalBooks: allAnalytics.length,
+      booksRead: booksReadCount,
+      pagesRead: totalPagesRead,
+      booksReadByPeriod: {
+        'daily': booksToday,
+        'weekly': booksWeek,
+        'monthly': booksMonth,
+        'yearly': booksYear
+      },
+    );
   }
 
   // --- NOT YÖNETİMİ ---

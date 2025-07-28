@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:my_library/models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
+import 'package:my_library/models/models.dart'
+    as app_models; // Neredeyse tüm dosyalar için;
 
 /// Ana ekranda tek bir kitabı temsil eden kart widget'ı.
 /// Kitabın durumuna göre ilerleme çubuğu ve durum etiketi gösterir.
@@ -50,54 +51,53 @@ class BookCard extends StatelessWidget {
                               // Resim yüklenemezse veya URL bozuksa gösterilecek fallback
                               errorBuilder: (_, __, ___) => Container(
                                 color: theme.colorScheme.secondary,
-                                child: Icon(Icons.book_outlined, color: theme.colorScheme.primary, size: 40),
+                                child: Icon(Icons.book_outlined,
+                                    color: theme.colorScheme.primary, size: 40),
                               ),
                             )
                           // Kapak URL'si hiç yoksa gösterilecek placeholder
                           : Container(
                               color: theme.colorScheme.secondary,
-                              child: Icon(Icons.book_outlined, color: theme.colorScheme.primary, size: 40),
+                              child: Icon(Icons.book_outlined,
+                                  color: theme.colorScheme.primary, size: 40),
                             ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   // Kitap Bilgileri
                   Expanded(
-                    child: SizedBox(
-                      height: 100,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                book.name ?? 'Başlık Yok',
-                                style: theme.textTheme.titleMedium,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                book.authorString,
-                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                          // Durum Etiketi ('Okuyorum', 'Tamamlandı' vb.)
-                          _buildStatusChip(context, analytics?.status ?? 'wishlist'),
-                        ],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      // Bu Column'un yüksekliği artık içeriğine göre belirlenecek.
+                      children: [
+                        Text(
+                          book.name ?? 'Başlık Yok',
+                          style: theme.textTheme.titleMedium,
+                          maxLines: 2, // En fazla 2 satır göster
+                          overflow: TextOverflow.ellipsis, // Sığmazsa ... koy
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          book.authorString,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.textTheme.bodySmall?.color),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8), // Durum çipi için boşluk
+                        // Durum Etiketi
+                        _buildStatusChip(
+                            context, analytics?.status ?? 'wishlist'),
+                      ],
                     ),
                   )
                 ],
               ),
               // --- İlerleme Çubuğu Bölümü ---
               // Sadece 'reading' veya 'completed' durumunda gösterilir
-              if (analytics != null && (analytics.status == 'reading' || analytics.status == 'completed'))
+              if (analytics != null &&
+                  (analytics.status == 'reading' ||
+                      analytics.status == 'completed'))
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Column(
@@ -119,7 +119,8 @@ class BookCard extends StatelessWidget {
                           ),
                           Text(
                             '%${(progress * 100).toStringAsFixed(0)}',
-                            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                         ],
                       )
@@ -159,7 +160,9 @@ class BookCard extends StatelessWidget {
     }
 
     return Chip(
-      label: Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
+      label: Text(label,
+          style: TextStyle(
+              color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
       backgroundColor: chipColor,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       side: BorderSide.none,
