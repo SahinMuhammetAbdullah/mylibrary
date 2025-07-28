@@ -43,8 +43,8 @@ class _MainWrapperState extends State<MainWrapper> {
               activeIcon: Icon(Icons.note_alt),
               label: 'Notlar'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+            icon: Icon(Icons.query_stats_outlined),
+            activeIcon: Icon(Icons.query_stats),
             label: 'Okumalar',
           ),
           BottomNavigationBarItem(
