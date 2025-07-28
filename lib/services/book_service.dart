@@ -2,7 +2,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../helpers/database_helper.dart';
-import '../models/app_models.dart' as app_models;
+import '../models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
 import '../services/open_library_service.dart';
 import '../helpers/data_notifier.dart'; // YENİ: Notifier'ı import et
 

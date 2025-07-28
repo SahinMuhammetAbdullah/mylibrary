@@ -15,14 +15,17 @@ class _MainWrapperState extends State<MainWrapper> {
   // Placeholder screens for other tabs
   final List<Widget> _pages = [
     const HomeScreen(),
-      const AllNotesScreen(), // Placeholder yerine yeni ekranı koy
+    const AllNotesScreen(), // Placeholder yerine yeni ekranı koy
+    const Scaffold(body: Center(child: Text("Okumalar (Yapım Aşamasında)"))),
     const Scaffold(body: Center(child: Text("Profil (Yapım Aşamasında)"))),
   ];
 
   void _onItemTapped(int index) {
-    setState(() { _selectedIndex = index; });
+    setState(() {
+      _selectedIndex = index;
+    });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -31,8 +34,19 @@ class _MainWrapperState extends State<MainWrapper> {
       body: IndexedStack(index: _selectedIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Kitaplık'),
-          BottomNavigationBarItem(icon: Icon(Icons.note_alt_outlined), activeIcon: Icon(Icons.note_alt), label: 'Notlar'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Kitaplık'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.note_alt_outlined),
+              activeIcon: Icon(Icons.note_alt),
+              label: 'Notlar'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Okumalar',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),

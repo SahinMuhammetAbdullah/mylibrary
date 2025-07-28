@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/app_models.dart' as app_models;
+import '../models/models.dart' as app_models; // Neredeyse tüm dosyalar için;
 import '../services/book_service.dart';
 import '../services/open_library_service.dart';
 
