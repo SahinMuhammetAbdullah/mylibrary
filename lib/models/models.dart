@@ -1,6 +1,6 @@
 export 'books/author.dart';
 export 'books/book.dart';
-export 'note.dart';
+export 'notes/note.dart';
 export 'books/person.dart';
 export 'books/place.dart';
 export 'books/publisher.dart';
