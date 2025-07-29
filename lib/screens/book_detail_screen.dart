@@ -408,9 +408,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   // === YARDIMCI WIDGET GÜNCELLENDİ ===
   /// Tıklanabilir opsiyonel bir bilgi öğesi oluşturan yardımcı widget.
-  Widget _buildInfoItem({required IconData icon, required String text, VoidCallback? onTap}) {
+  Widget _buildInfoItem(
+      {required IconData icon, required String text, VoidCallback? onTap}) {
     final theme = Theme.of(context);
-    
+
     // Eğer tıklanabilir ise, etrafına bir InkWell sar.
     if (onTap != null) {
       return InkWell(
@@ -425,7 +426,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               const SizedBox(width: 6),
               Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
               const SizedBox(width: 4),
-              Icon(Icons.edit, size: 14, color: theme.textTheme.bodySmall?.color),
+              Icon(Icons.edit,
+                  size: 14, color: theme.textTheme.bodySmall?.color),
             ],
           ),
         ),
@@ -664,39 +666,59 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
   Widget _buildStatusActions() {
     final analytics = _book?.analytics;
+    // Analitik verisi yoksa veya kitap kütüphanede değilse hiçbir şey gösterme.
     if (analytics == null || !_isBookInLibrary) return const SizedBox.shrink();
 
     final bookService = context.read<BookService>();
 
-    if (analytics.status == 'wishlist') {
-      return Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.play_arrow),
-          label: const Text('Okumaya Başla'),
-          onPressed: () async {
-            await bookService.changeBookStatus(analytics, 'reading');
-            _loadData(); // Ekranı güncelle
-          },
-        ),
-      );
-    }
+    // Duruma göre farklı butonlar göster
+    switch (analytics.status) {
+      case 'wishlist':
+        return Center(
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Okumaya Başla'),
+            onPressed: () async {
+              await bookService.changeBookStatus(analytics, 'reading');
+              _loadData(); // Ekranı yeni durumla güncelle
+            },
+          ),
+        );
 
-    if (analytics.status == 'reading') {
-      return Center(
-        child: ElevatedButton.icon(
-          icon: const Icon(Icons.check_circle),
-          label: const Text('Okundu Olarak İşaretle'),
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.secondary),
-          onPressed: () async {
-            await bookService.changeBookStatus(analytics, 'completed');
-            _loadData(); // Ekranı güncelle
-          },
-        ),
-      );
-    }
+      case 'reading':
+        return Center(
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            label: const Text('Okundu Olarak İşaretle'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              await bookService.changeBookStatus(analytics, 'completed');
+              _loadData(); // Ekranı yeni durumla güncelle
+            },
+          ),
+        );
 
-    // Kitap tamamlandıysa bir şey göstermeye gerek yok (veya tekrar başla butonu eklenebilir)
-    return const SizedBox.shrink();
+      case 'completed':
+        // Kitap tamamlandıysa "Yeniden Oku" butonunu göster
+        return Center(
+          child: TextButton.icon(
+            icon: const Icon(Icons.replay_rounded),
+            label: const Text('Bu Kitabı Yeniden Oku'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of((context)).colorScheme.secondary,
+            ),
+            onPressed: () async {
+              await bookService.readBookAgain(analytics);
+              _loadData(); // Ekranı yeni durumla güncelle
+            },
+          ),
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

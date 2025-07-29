@@ -385,7 +385,23 @@ class BookService with ChangeNotifier {
     // Özellikle istatistik sayfasının bu değişiklikten haberdar olması gerekir.
     notifyDataChanged();
   }
-  
+
+  Future<void> readBookAgain(app_models.Analytics analytics) async {
+    // Durumu 'reading' olarak güncelle
+    analytics.status = 'reading';
+    // İlerlemeyi sıfırla
+    analytics.currentPage = 0;
+    // Bitiş tarihini temizle
+    analytics.finishedAt = null;
+    // Başlangıç tarihini bugüne ayarla (yeni bir okuma süreci)
+    analytics.startedAt = DateTime.now();
+
+    // Değişiklikleri kaydetmek için mevcut updateAnalytics metodunu çağır.
+    await updateAnalytics(analytics);
+    // Ana ekrandaki listeyi de anında güncelle.
+    await loadLibraryBooks();
+  }
+
   // --- NOT YÖNETİMİ ---
 
   /// Bir kitaba yeni not ekler.
