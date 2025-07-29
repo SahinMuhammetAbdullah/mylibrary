@@ -68,7 +68,7 @@ class _AllNotesScreenState extends State<AllNotesScreen> {
         } else if (date.isAfter(yesterday)) {
           currentHeader = "Dün";
         } else {
-          currentHeader = DateFormat('d MMMM yyyy', 'tr_TR').format(date);
+          currentHeader = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR').format(date);
         }
       } else {
         currentHeader = note['bookTitle'];
@@ -127,7 +127,7 @@ class _AllNotesScreenState extends State<AllNotesScreen> {
               }
 
               final note = item as Map<String, dynamic>;
-              final noteDate = DateFormat('dd.MM.yyyy', 'tr_TR')
+              final noteDate = DateFormat('dd.MM.yyyy HH:mm', 'tr_TR')
                   .format(DateTime.parse(note['n_createdAt']));
               final pageNumber = note['n_pageNumber'];
               return Card(

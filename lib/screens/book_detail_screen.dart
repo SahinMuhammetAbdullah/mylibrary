@@ -157,8 +157,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     if (mounted && loadedBook != null) {
       setState(() {
         _book = loadedBook;
-        _notePageController.text =
-            _book?.analytics?.currentPage.toString() ?? "";
       });
     }
   }
@@ -544,7 +542,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                     controller: _notePageController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Sayfa No',
+                      labelText: 'Sayfa No', // Sadece labelText, hintText yok.
                       isDense: true,
                       border: OutlineInputBorder(),
                     ),
@@ -567,11 +565,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  Future<void> _addNote() async {
-    if (_noteController.text.trim().isEmpty ||
-        _book == null ||
-        !_isBookInLibrary) return;
-
+Future<void> _addNote() async {
+    if (_noteController.text.trim().isEmpty || _book == null || !_isBookInLibrary) return;
+    
     final bookService = context.read<BookService>();
     final pageNumber = int.tryParse(_notePageController.text);
 
@@ -580,9 +576,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       _book!.id,
       pageNumber: pageNumber,
     );
-
+    
+    // Formu temizle
     _noteController.clear();
+    _notePageController.clear(); // Sayfa numarası alanını da temizle
     FocusScope.of(context).unfocus();
+
     final updatedNotes = await bookService.getNotesForBook(_book!.id);
     if (mounted) setState(() => _notes = updatedNotes);
   }
@@ -688,21 +687,18 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           clipBehavior: Clip.antiAlias,
           child: Dismissible(
             key: ValueKey(note.id),
-
             background: Container(
               color: errorColor,
               alignment: Alignment.centerLeft,
               padding: const EdgeInsets.only(left: 20),
               child: const Icon(Icons.edit, color: Colors.white),
             ),
-
             secondaryBackground: Container(
               color: primaryColor,
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
               child: const Icon(Icons.delete, color: Colors.white),
             ),
-
             confirmDismiss: (direction) async {
               if (direction == DismissDirection.startToEnd) {
                 // SOLDAN SAĞA → DÜZENLE
@@ -735,13 +731,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 );
               }
             },
-
             onDismissed: (direction) {
               if (direction == DismissDirection.endToStart) {
                 _deleteNote(note.id);
               }
             },
-
             child: ListTile(
               tileColor: theme.cardColor,
               title: Text(note.text),
