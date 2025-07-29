@@ -194,6 +194,64 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     _loadData();
   }
 
+// === YENİ METOT: SAYFA SAYISI DÜZENLEME DİYALOĞU ===
+  Future<void> _showEditTotalPagesDialog() async {
+    // Kitap bilgisi henüz yüklenmediyse işlemi iptal et
+    if (_book == null) return;
+
+    final formKey = GlobalKey<FormState>();
+    final pageController =
+        TextEditingController(text: _book!.totalPages?.toString() ?? '');
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Toplam Sayfa Sayısını Düzenle'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: pageController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Sayfa Sayısı'),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Lütfen bir sayı girin.';
+                }
+                if (int.tryParse(value) == null) {
+                  return 'Lütfen geçerli bir sayı girin.';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('İptal'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Kaydet'),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final newPageCount = int.parse(pageController.text);
+                  await context
+                      .read<BookService>()
+                      .updateBookTotalPages(_book!.id, newPageCount);
+
+                  // Diyaloğu kapat ve arka plandaki ekranı yenile
+                  Navigator.of(dialogContext).pop();
+                  _loadData(); // Ekranı yeni verilerle tekrar yükle
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -329,11 +387,15 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 text:
                     'Yayıncı: ${_book!.publishers.map((p) => p.name).join(', ')}',
               ),
-            if (_book!.totalPages != null && _book!.totalPages! > 0)
-              _buildInfoItem(
-                icon: Icons.pages_outlined,
-                text: '${_book!.totalPages} sayfa',
-              ),
+            _buildInfoItem(
+              icon: Icons.pages_outlined,
+              // Eğer sayfa sayısı null veya 0 ise farklı bir metin göster.
+              text: (_book!.totalPages != null && _book!.totalPages! > 0)
+                  ? '${_book!.totalPages} sayfa'
+                  : 'Sayfa sayısı ekle',
+              // Her iki durumda da tıklanabilir.
+              onTap: _showEditTotalPagesDialog,
+            ),
             if (_book!.publishDate != null && _book!.publishDate!.isNotEmpty)
               _buildInfoItem(
                 icon: Icons.calendar_today_outlined,
@@ -346,12 +408,35 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  // Tekrarlanan kodu önlemek için yardımcı widget
-  Widget _buildInfoItem({required IconData icon, required String text}) {
+  // === YARDIMCI WIDGET GÜNCELLENDİ ===
+  /// Tıklanabilir opsiyonel bir bilgi öğesi oluşturan yardımcı widget.
+  Widget _buildInfoItem({required IconData icon, required String text, VoidCallback? onTap}) {
     final theme = Theme.of(context);
+    
+    // Eğer tıklanabilir ise, etrafına bir InkWell sar.
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 6.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: theme.textTheme.bodySmall?.color),
+              const SizedBox(width: 6),
+              Flexible(child: Text(text, style: theme.textTheme.bodyLarge)),
+              const SizedBox(width: 4),
+              Icon(Icons.edit, size: 14, color: theme.textTheme.bodySmall?.color),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Tıklanabilir değilse, normal halini döndür.
     return Row(
-      mainAxisSize: MainAxisSize
-          .min, // Row'un sadece içindekiler kadar yer kaplamasını sağlar
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: theme.textTheme.bodySmall?.color),
         const SizedBox(width: 6),
@@ -493,7 +578,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     await bookService.addNoteForBook(
       _noteController.text.trim(),
       _book!.id,
-      pageNumber: pageNumber, 
+      pageNumber: pageNumber,
     );
 
     _noteController.clear();

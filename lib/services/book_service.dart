@@ -371,6 +371,21 @@ class BookService with ChangeNotifier {
     );
   }
 
+  // === YENİ METOT: SAYFA SAYISINI GÜNCELLEME ===
+  /// Bir kitabın toplam sayfa sayısını veritabanında günceller.
+  Future<void> updateBookTotalPages(int bookId, int newPageCount) async {
+    final db = await _db.database;
+    await db.update(
+      'Books',
+      {'b_totalPages': newPageCount},
+      where: 'b_id = ?',
+      whereArgs: [bookId],
+    );
+    // Veri değiştiği için diğer ekranları haberdar et.
+    // Özellikle istatistik sayfasının bu değişiklikten haberdar olması gerekir.
+    notifyDataChanged();
+  }
+  
   // --- NOT YÖNETİMİ ---
 
   /// Bir kitaba yeni not ekler.
