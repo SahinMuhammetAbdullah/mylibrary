@@ -418,6 +418,24 @@ class BookService with ChangeNotifier {
     notifyDataChanged();
   }
 
+  // === YENİ METOT: NOT GÜNCELLEME ===
+  /// Mevcut bir notu yeni metin ve sayfa numarası ile günceller.
+  Future<void> updateNote(
+      int noteId, String newText, int? newPageNumber) async {
+    final db = await _db.database;
+    await db.update(
+      'Notes',
+      {
+        'n_text': newText,
+        'n_pageNumber': newPageNumber,
+      },
+      where: 'n_id = ?',
+      whereArgs: [noteId],
+    );
+    // Veri değiştiği için diğer ekranları haberdar et.
+    notifyDataChanged();
+  }
+
   /// Bir notu siler.
   Future<void> deleteNote(int noteId) async {
     final db = await _db.database;

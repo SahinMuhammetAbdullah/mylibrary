@@ -596,30 +596,160 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       setState(() => _notes.removeWhere((note) => note.id == noteId));
   }
 
+  // === YENİ METOT: NOT DÜZENLEME DİYALOĞU (BURAYA TAŞINDI) ===
+  Future<void> _showEditNoteDialog(app_models.Note note) async {
+    final formKey = GlobalKey<FormState>();
+    final textController = TextEditingController(text: note.text);
+    final pageController =
+        TextEditingController(text: note.pageNumber?.toString() ?? '');
+
+    final bool? wasSaved = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Notu Düzenle'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: textController,
+                  autofocus: true,
+                  maxLines: 5,
+                  minLines: 1,
+                  decoration: const InputDecoration(labelText: 'Not Metni'),
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'Not boş olamaz.'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: pageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                      labelText: 'Sayfa No (isteğe bağlı)'),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('İptal'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            ElevatedButton(
+              child: const Text('Kaydet'),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final newText = textController.text;
+                  final newPage = int.tryParse(pageController.text);
+                  await context
+                      .read<BookService>()
+                      .updateNote(note.id, newText, newPage);
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    // Eğer diyalog "kaydedildi" olarak kapandıysa, bu ekrandaki not listesini yenile.
+    if (wasSaved == true) {
+      _loadData();
+    }
+  }
+
   Widget _buildNotesList() {
-    if (_notes.isEmpty)
+    if (_notes.isEmpty) {
       return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 24.0),
-          child: Center(child: Text("Henüz not eklenmemiş.")));
+        padding: EdgeInsets.symmetric(vertical: 24.0),
+        child: Center(child: Text("Henüz not eklenmemiş.")),
+      );
+    }
+
+    final theme = Theme.of(context);
+    final errorColor = theme.colorScheme.error;
+    final primaryColor = theme.colorScheme.primary;
+
     return ListView.builder(
       itemCount: _notes.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemBuilder: (context, index) {
         final note = _notes[index];
-        return Dismissible(
-          key: ValueKey(note.id),
-          direction: DismissDirection.endToStart,
-          onDismissed: (_) => _deleteNote(note.id),
-          background: Container(
-              color: Colors.red.shade700,
+        return Card(
+          elevation: 2,
+          margin: const EdgeInsets.only(bottom: 8.0),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: Dismissible(
+            key: ValueKey(note.id),
+
+            background: Container(
+              color: errorColor,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
+              child: const Icon(Icons.edit, color: Colors.white),
+            ),
+
+            secondaryBackground: Container(
+              color: primaryColor,
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
-              margin: const EdgeInsets.only(bottom: 8),
-              child: const Icon(Icons.delete, color: Colors.white)),
-          child: Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(title: Text(note.text))),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+
+            confirmDismiss: (direction) async {
+              if (direction == DismissDirection.startToEnd) {
+                // SOLDAN SAĞA → DÜZENLE
+                await _showEditNoteDialog(note);
+                return false;
+              } else {
+                // SAĞDAN SOLA → SİL
+                return await showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text("Notu Sil"),
+                      content: const Text(
+                          "Bu notu silmek istediğinizden emin misiniz?"),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text("İptal"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text(
+                            "SİL",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              }
+            },
+
+            onDismissed: (direction) {
+              if (direction == DismissDirection.endToStart) {
+                _deleteNote(note.id);
+              }
+            },
+
+            child: ListTile(
+              tileColor: theme.cardColor,
+              title: Text(note.text),
+              subtitle: note.pageNumber != null
+                  ? Text('Sayfa: ${note.pageNumber}')
+                  : null,
+            ),
+          ),
         );
       },
     );
