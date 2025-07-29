@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:my_library/models/models.dart' as app_models;
+import 'package:my_library/models/models.dart';
 import 'package:my_library/services/book_service.dart';
-import 'package:my_library/helpers/data_notifier.dart'; 
+import 'package:my_library/helpers/data_notifier.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -11,68 +11,90 @@ class StatsScreen extends StatefulWidget {
   State<StatsScreen> createState() => _StatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStateMixin {
-  late Future<app_models.StatsData> _statsFuture;
+class _StatsScreenState extends State<StatsScreen>
+    with SingleTickerProviderStateMixin {
+  late Future<StatsData> _statsFuture;
   late TabController _tabController;
+
+  // Hangi sekmenin hangi periyoda karşılık geldiğini tutan bir liste
+  final List<StatsPeriod> _periods = [
+    StatsPeriod.today,
+    StatsPeriod.week,
+    StatsPeriod.month,
+    StatsPeriod.year,
+    StatsPeriod.allTime,
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _loadStats();
-    // Global veri değişikliği bildirimini dinlemeye başla.
+    // TabController'ın uzunluğunu 5'e çıkarıyoruz
+    _tabController = TabController(length: 5, vsync: this);
+    // Sekme değişimlerini dinlemek için bir listener ekliyoruz
+    _tabController.addListener(_onTabChanged);
+    // Başlangıçta "Tüm Zamanlar" seçili olsun
+    _tabController.index = 4;
+    _loadStats(StatsPeriod.allTime);
     dataChangeNotifier.addListener(_onDataChanged);
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
-    // Bellek sızıntılarını önlemek için dinleyiciyi kaldır.
     dataChangeNotifier.removeListener(_onDataChanged);
     super.dispose();
   }
 
-  // Bildirim geldiğinde bu metot çalışır.
   void _onDataChanged() {
     if (mounted) {
-      // İstatistikleri yeniden yükleyerek ekranı güncelle.
-      _loadStats();
+      // Mevcut seçili sekmeye göre istatistikleri yeniden yükle
+      _loadStats(_periods[_tabController.index]);
     }
   }
-  
-  // İstatistikleri yükleme işlemini ayrı bir metoda taşıdık.
-  void _loadStats() {
-    if(mounted) {
+
+  // Sekme değiştiğinde çalışan metot
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) {
+      // Değişen sekmeye göre istatistikleri yükle
+      _loadStats(_periods[_tabController.index]);
+    }
+  }
+
+  void _loadStats(StatsPeriod period) {
+    if (mounted) {
       setState(() {
-        _statsFuture = context.read<BookService>().getStats();
+        _statsFuture = context.read<BookService>().getStats(period: period);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text("İstatistiklerim"),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true, // Sekmelerin sığması için kaydırılabilir yap
           tabs: const [
             Tab(text: "Bugün"),
             Tab(text: "Bu Hafta"),
             Tab(text: "Bu Ay"),
             Tab(text: "Bu Yıl"),
+            Tab(text: "Tüm Zamanlar"), // Yeni sekme
           ],
         ),
       ),
-      body: FutureBuilder<app_models.StatsData>(
+      body: FutureBuilder<StatsData>(
         future: _statsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text("İstatistikler yüklenemedi: ${snapshot.error}"));
+            return Center(
+                child: Text("İstatistikler yüklenemedi: ${snapshot.error}"));
           }
           if (!snapshot.hasData) {
             return const Center(child: Text("Veri bulunamadı."));
@@ -84,7 +106,7 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: GridView(
+                child:  GridView(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     childAspectRatio: 1.2,
@@ -101,33 +123,32 @@ class _StatsScreenState extends State<StatsScreen> with SingleTickerProviderStat
                 ),
               ),
               const Divider(height: 1),
+              // ALttaki büyük sayılar için TabBarView
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildStatsDetail("Bugün Okunan Kitap", stats.booksReadByPeriod['daily'] ?? 0),
-                    _buildStatsDetail("Bu Hafta Okunan Kitap", stats.booksReadByPeriod['weekly'] ?? 0),
-                    _buildStatsDetail("Bu Ay Okunan Kitap", stats.booksReadByPeriod['monthly'] ?? 0),
-                    _buildStatsDetail("Bu Yıl Okunan Kitap", stats.booksReadByPeriod['yearly'] ?? 0),
-                  ],
-                ),
+                child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Bu Periyotta Okunan Kitap",
+                              style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 16),
+                          Text(stats.booksRead.toString(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .displayMedium
+                                  ?.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    )),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildStatsDetail(String title, int count) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 16),
-          Text(count.toString(), style: Theme.of(context).textTheme.displayMedium?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-        ],
       ),
     );
   }
@@ -143,14 +164,20 @@ class _StatCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.dividerColor)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.dividerColor)),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(number.toString(), style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
+            Text(number.toString(),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
-            Text(label, style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text(label,
+                style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
           ],
         ),
       ),

@@ -7,6 +7,9 @@ import 'package:my_library/services/open_library_service.dart';
 import 'package:my_library/helpers/data_notifier.dart';
 import 'package:my_library/models/analysis/stats_data.dart';
 
+enum StatsPeriod { today, week, month, year, allTime }
+
+
 /// Bu servis, uygulama mantığı ile veritabanı arasındaki tüm işlemleri yönetir.
 /// Kitap ekleme/silme, ilerleme güncelleme, not yönetimi ve istatistik hesaplama gibi
 /// tüm merkezi işlevler burada bulunur.
@@ -297,77 +300,73 @@ class BookService with ChangeNotifier {
 
   // --- İSTATİSTİK YÖNETİMİ ---
 
-  /// Kullanıcının tüm okuma istatistiklerini hesaplar.
-  Future<StatsData> getStats() async {
+  // === İSTATİSTİK HESAPLAMA METODU TAMAMEN YENİLENDİ ===
+  /// Kullanıcının okuma istatistiklerini, belirtilen zaman periyoduna göre hesaplar.
+  Future<StatsData> getStats({StatsPeriod period = StatsPeriod.allTime}) async {
     final db = await _db.database;
-    final allAnalytics = await db
-        .query('Analytics', where: 'u_id = ?', whereArgs: [_currentUserId]);
-
-    // 1. Tamamlanmış kitapları bul
-    final completedBooksAnalytics =
-        allAnalytics.where((m) => m['a_status'] == 'completed').toList();
-    final booksReadCount = completedBooksAnalytics.length;
-
-    int totalPagesRead = 0;
-
-    // 2. Tamamlanmış kitapların TOPLAM sayfa sayılarını topla
-    if (completedBooksAnalytics.isNotEmpty) {
-      final bookIds = completedBooksAnalytics.map((m) => m['b_id']).toList();
-      final pageCounts = await db.query('Books',
-          columns: ['b_totalPages'],
-          where: 'b_id IN (${bookIds.map((_) => '?').join(',')})',
-          whereArgs: bookIds);
-      totalPagesRead += pageCounts.fold(
-          0, (sum, map) => sum + (map['b_totalPages'] as int? ?? 0));
-    }
-
-    // 3. Okunmakta olan kitapları bul
-    final readingBooksAnalytics =
-        allAnalytics.where((m) => m['a_status'] == 'reading').toList();
-
-    // 4. Okunmakta olan kitapların MEVCUT sayfa sayılarını (`a_currentPage`) topla
-    if (readingBooksAnalytics.isNotEmpty) {
-      totalPagesRead += readingBooksAnalytics.fold(
-          0, (sum, map) => sum + (map['a_currentPage'] as int? ?? 0));
-    }
-
-    // 5. Periyotlara göre tamamlanmış kitap sayılarını hesapla (Bu mantık aynı kalır)
+    final allAnalytics = await db.query('Analytics', where: 'u_id = ?', whereArgs: [_currentUserId]);
+    
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final startOfYear = DateTime(now.year, 1, 1);
-    int booksToday = completedBooksAnalytics
-        .where((m) =>
-            m['a_finishedAt'] != null &&
-            DateTime.parse(m['a_finishedAt'] as String).isAfter(today))
-        .length;
-    int booksWeek = completedBooksAnalytics
-        .where((m) =>
-            m['a_finishedAt'] != null &&
-            DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfWeek))
-        .length;
-    int booksMonth = completedBooksAnalytics
-        .where((m) =>
-            m['a_finishedAt'] != null &&
-            DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfMonth))
-        .length;
-    int booksYear = completedBooksAnalytics
-        .where((m) =>
-            m['a_finishedAt'] != null &&
-            DateTime.parse(m['a_finishedAt'] as String).isAfter(startOfYear))
-        .length;
+    DateTime? startDate;
+
+    // Seçilen periyoda göre bir başlangıç tarihi belirle
+    switch (period) {
+      case StatsPeriod.today:
+        startDate = DateTime(now.year, now.month, now.day);
+        break;
+      case StatsPeriod.week:
+        startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+        break;
+      case StatsPeriod.month:
+        startDate = DateTime(now.year, now.month, 1);
+        break;
+      case StatsPeriod.year:
+        startDate = DateTime(now.year, 1, 1);
+        break;
+      case StatsPeriod.allTime:
+        startDate = null; // Başlangıç tarihi yok, her şeyi dahil et
+        break;
+    }
+
+    // Belirlenen periyotta tamamlanmış kitapları filtrele
+    final completedBooksInPeriod = allAnalytics.where((m) {
+      if (m['a_status'] != 'completed' || m['a_finishedAt'] == null) return false;
+      // Eğer bir başlangıç tarihi varsa, bitiş tarihinin o tarihten sonra olup olmadığını kontrol et
+      if (startDate != null) {
+        return DateTime.parse(m['a_finishedAt'] as String).isAfter(startDate);
+      }
+      // Başlangıç tarihi yoksa (Tüm Zamanlar), tüm tamamlanmış kitapları dahil et
+      return true;
+    }).toList();
+    
+    final booksReadCount = completedBooksInPeriod.length;
+
+    // Okunan toplam sayfa sayısını SADECE bu periyotta tamamlanan kitaplara göre hesapla
+    int totalPagesReadInPeriod = 0;
+    if (completedBooksInPeriod.isNotEmpty) {
+      final bookIds = completedBooksInPeriod.map((m) => m['b_id']).toList();
+      final pageCounts = await db.query('Books', columns: ['b_totalPages'], where: 'b_id IN (${bookIds.map((_) => '?').join(',')})', whereArgs: bookIds);
+      totalPagesReadInPeriod = pageCounts.fold(0, (sum, map) => sum + (map['b_totalPages'] as int? ?? 0));
+    }
+
+    // Alt periyotlar için hesaplamalar (Bunlar her zaman tüm zamanlara göre kalabilir veya
+    // istenirse bu da dinamik hale getirilebilir, şimdilik basit tutalım)
+    final allCompletedBooks = allAnalytics.where((m) => m['a_status'] == 'completed');
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final weekDate = todayDate.subtract(Duration(days: now.weekday-1));
+    final monthDate = DateTime(now.year, now.month, 1);
+    final yearDate = DateTime(now.year, 1, 1);
+
+    int booksToday = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(todayDate)).length;
+    int booksWeek = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(weekDate)).length;
+    int booksMonth = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(monthDate)).length;
+    int booksYear = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(yearDate)).length;
 
     return StatsData(
-      totalBooks: allAnalytics.length,
+      totalBooks: allAnalytics.length, // Bu her zaman toplam kitap sayısıdır
       booksRead: booksReadCount,
-      pagesRead: totalPagesRead,
-      booksReadByPeriod: {
-        'daily': booksToday,
-        'weekly': booksWeek,
-        'monthly': booksMonth,
-        'yearly': booksYear
-      },
+      pagesRead: totalPagesReadInPeriod,
+      booksReadByPeriod: {'daily': booksToday, 'weekly': booksWeek, 'monthly': booksMonth, 'yearly': booksYear},
     );
   }
 
