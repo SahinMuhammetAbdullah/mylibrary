@@ -121,6 +121,7 @@ class DatabaseHelper {
         b_id INTEGER NOT NULL,
         n_text TEXT NOT NULL,
         n_createdAt TEXT NOT NULL,                     -- Notun oluşturulma tarihi
+        n_pageNumber INTEGER,
         FOREIGN KEY (b_id) REFERENCES Books(b_id) ON DELETE CASCADE, -- Eğer bir kitap silinirse, notları da otomatik olarak silinir.
         FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE   -- Eğer bir kullanıcı silinirse, notları da silinir.
       )

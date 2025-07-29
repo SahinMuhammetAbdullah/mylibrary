@@ -374,13 +374,15 @@ class BookService with ChangeNotifier {
   // --- NOT YÖNETİMİ ---
 
   /// Bir kitaba yeni not ekler.
-  Future<void> addNoteForBook(String text, int bookId) async {
+  Future<void> addNoteForBook(String text, int bookId,
+      {int? pageNumber}) async {
     final db = await _db.database;
     await db.insert('Notes', {
       'u_id': _currentUserId,
       'b_id': bookId,
       'n_text': text,
-      'n_createdAt': DateTime.now().toIso8601String()
+      'n_createdAt': DateTime.now().toIso8601String(),
+      'n_pageNumber': pageNumber, // Yeni alanı ekle
     });
     notifyDataChanged();
   }
@@ -401,10 +403,13 @@ class BookService with ChangeNotifier {
         orderBy: 'n_createdAt DESC');
     return noteMaps
         .map((m) => app_models.Note(
-            id: m['n_id'] as int,
-            bookId: m['b_id'] as int,
-            text: m['n_text'] as String,
-            bookTitle: ''))
+              id: m['n_id'] as int,
+              bookId: m['b_id'] as int,
+              text: m['n_text'] as String,
+              bookTitle: '',
+              pageNumber:
+                  m['n_pageNumber'] as int?, // YENİ: Sayfa numarasını oku
+            ))
         .toList();
   }
 
@@ -417,6 +422,7 @@ class BookService with ChangeNotifier {
         n.n_id, 
         n.n_text, 
         n.n_createdAt, 
+        n.n_pageNumber, -- Yeni alanı sorguya ekle
         b.b_name as bookTitle 
       FROM Notes n 
       JOIN Books b ON n.b_id = b.b_id 

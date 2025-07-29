@@ -129,7 +129,7 @@ class _AllNotesScreenState extends State<AllNotesScreen> {
               final note = item as Map<String, dynamic>;
               final noteDate = DateFormat('dd.MM.yyyy', 'tr_TR')
                   .format(DateTime.parse(note['n_createdAt']));
-
+              final pageNumber = note['n_pageNumber'];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Padding(
@@ -147,6 +147,14 @@ class _AllNotesScreenState extends State<AllNotesScreen> {
                         mainAxisAlignment: MainAxisAlignment
                             .end, // Çocukları satırın sonuna yasla
                         children: [
+                          if (pageNumber != null)
+                            Text(
+                              'Sayfa: $pageNumber  •  ',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
                           // Expanded, Text'in mevcut tüm yatay alanı kullanmasını sağlar,
                           // böylece textAlign: TextAlign.right düzgün çalışır.
                           Expanded(

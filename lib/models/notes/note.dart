@@ -3,6 +3,12 @@ class Note {
   final int bookId;
   final String text;
   final String bookTitle;
-
-  Note({required this.id, required this.bookId, required this.text, required this.bookTitle});
+  final int? pageNumber;
+  Note({
+    required this.id,
+    required this.bookId,
+    required this.text,
+    required this.bookTitle,
+    this.pageNumber,
+  });
 }

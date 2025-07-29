@@ -23,16 +23,19 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   List<app_models.Note> _notes = [];
   bool _isBookInLibrary = false;
   final _noteController = TextEditingController();
+  final _notePageController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadDataFuture = _loadData();
+    _notePageController.text = _book?.analytics?.currentPage.toString() ?? "";
   }
 
   @override
   void dispose() {
     _noteController.dispose();
+    _notePageController.dispose();
     super.dispose();
   }
 
@@ -150,6 +153,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     }
     if (mounted && loadedBook != null) {
       setState(() => _book = loadedBook);
+    }
+    if (mounted && loadedBook != null) {
+      setState(() {
+        _book = loadedBook;
+        _notePageController.text =
+            _book?.analytics?.currentPage.toString() ?? "";
+      });
     }
   }
 
@@ -428,24 +438,47 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       elevation: 0,
       color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
       child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 4),
-          child: Row(children: [
-            Expanded(
-                child: TextField(
-                    controller: _noteController,
-                    focusNode: _noteFocusNode,
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _noteController,
+              focusNode: _noteFocusNode,
+              decoration: const InputDecoration(
+                  hintText: 'Bu kitap hakkında bir not ekle...',
+                  border: InputBorder.none),
+              maxLines: 3,
+              minLines: 1,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: TextField(
+                    controller: _notePageController,
+                    keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                        hintText: 'Bu kitap hakkında bir not ekle...',
-                        border: InputBorder.none),
-                    maxLines: null)),
-            IconButton(
-                icon: const Icon(Icons.add_comment_outlined),
-                onPressed: () async {
-                  await _addNote();
-                  _noteFocusNode.unfocus();
-                },
-                color: Theme.of(context).colorScheme.primary)
-          ])),
+                      labelText: 'Sayfa No',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.add_comment_outlined),
+                  label: const Text("Ekle"),
+                  onPressed: () async {
+                    await _addNote();
+                    _noteFocusNode.unfocus();
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -453,9 +486,18 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     if (_noteController.text.trim().isEmpty ||
         _book == null ||
         !_isBookInLibrary) return;
+
     final bookService = context.read<BookService>();
-    await bookService.addNoteForBook(_noteController.text.trim(), _book!.id);
+    final pageNumber = int.tryParse(_notePageController.text);
+
+    await bookService.addNoteForBook(
+      _noteController.text.trim(),
+      _book!.id,
+      pageNumber: pageNumber, 
+    );
+
     _noteController.clear();
+    FocusScope.of(context).unfocus();
     final updatedNotes = await bookService.getNotesForBook(_book!.id);
     if (mounted) setState(() => _notes = updatedNotes);
   }
@@ -498,20 +540,24 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-Widget _buildProgressBar() {
+  Widget _buildProgressBar() {
     final analytics = _book?.analytics;
     final totalPages = _book?.totalPages;
 
-    if (analytics == null || analytics.status != 'reading' || totalPages == null || totalPages == 0) {
+    if (analytics == null ||
+        analytics.status != 'reading' ||
+        totalPages == null ||
+        totalPages == 0) {
       return const SizedBox.shrink();
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Okuma İlerlemesi'),
         Slider(
-          value: analytics.currentPage.toDouble().clamp(0, totalPages.toDouble()),
+          value:
+              analytics.currentPage.toDouble().clamp(0, totalPages.toDouble()),
           max: totalPages.toDouble(),
           divisions: totalPages > 0 ? totalPages : 1,
           label: analytics.currentPage.toString(),
@@ -524,7 +570,8 @@ Widget _buildProgressBar() {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${analytics.currentPage} / $totalPages'),
-              Text('%${(analytics.currentPage / totalPages * 100).toStringAsFixed(0)} tamamlandı'),
+              Text(
+                  '%${(analytics.currentPage / totalPages * 100).toStringAsFixed(0)} tamamlandı'),
             ],
           ),
         ),
@@ -535,10 +582,10 @@ Widget _buildProgressBar() {
   Widget _buildStatusActions() {
     final analytics = _book?.analytics;
     if (analytics == null || !_isBookInLibrary) return const SizedBox.shrink();
-    
+
     final bookService = context.read<BookService>();
-    
-    if(analytics.status == 'wishlist') {
+
+    if (analytics.status == 'wishlist') {
       return Center(
         child: ElevatedButton.icon(
           icon: const Icon(Icons.play_arrow),
@@ -550,13 +597,14 @@ Widget _buildProgressBar() {
         ),
       );
     }
-    
-    if(analytics.status == 'reading') {
+
+    if (analytics.status == 'reading') {
       return Center(
         child: ElevatedButton.icon(
           icon: const Icon(Icons.check_circle),
           label: const Text('Okundu Olarak İşaretle'),
-          style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.secondary),
           onPressed: () async {
             await bookService.changeBookStatus(analytics, 'completed');
             _loadData(); // Ekranı güncelle
@@ -564,7 +612,7 @@ Widget _buildProgressBar() {
         ),
       );
     }
-    
+
     // Kitap tamamlandıysa bir şey göstermeye gerek yok (veya tekrar başla butonu eklenebilir)
     return const SizedBox.shrink();
   }
