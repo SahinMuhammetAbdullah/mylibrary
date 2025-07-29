@@ -565,9 +565,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-Future<void> _addNote() async {
-    if (_noteController.text.trim().isEmpty || _book == null || !_isBookInLibrary) return;
-    
+  Future<void> _addNote() async {
+    if (_noteController.text.trim().isEmpty ||
+        _book == null ||
+        !_isBookInLibrary) return;
+
     final bookService = context.read<BookService>();
     final pageNumber = int.tryParse(_notePageController.text);
 
@@ -576,7 +578,7 @@ Future<void> _addNote() async {
       _book!.id,
       pageNumber: pageNumber,
     );
-    
+
     // Formu temizle
     _noteController.clear();
     _notePageController.clear(); // Sayfa numarası alanını da temizle
@@ -659,6 +661,64 @@ Future<void> _addNote() async {
     if (wasSaved == true) {
       _loadData();
     }
+  }
+
+  // === YENİ METOT: HASSAS SAYFA GİRİŞİ İÇİN DİYALOG ===
+  Future<void> _showUpdateCurrentPageDialog() async {
+    if (_book?.analytics == null) return;
+    final analytics = _book!.analytics!;
+    final totalPages = _book!.totalPages ?? 0;
+
+    final formKey = GlobalKey<FormState>();
+    final pageController =
+        TextEditingController(text: analytics.currentPage.toString());
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Sayfayı Güncelle'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: pageController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                  labelText: 'Mevcut Sayfa (Toplam: $totalPages)'),
+              validator: (value) {
+                if (value == null ||
+                    value.isEmpty ||
+                    int.tryParse(value) == null) {
+                  return 'Geçerli bir sayı girin.';
+                }
+                final page = int.parse(value);
+                if (page < 0 || (totalPages > 0 && page > totalPages)) {
+                  return 'Sayfa 0-$totalPages arasında olmalı.';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('İptal')),
+            ElevatedButton(
+              child: const Text('Kaydet'),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  analytics.currentPage = int.parse(pageController.text);
+                  await context.read<BookService>().updateAnalytics(analytics);
+                  Navigator.of(dialogContext).pop();
+                  _loadData();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildNotesList() {
@@ -753,34 +813,44 @@ Future<void> _addNote() async {
     final analytics = _book?.analytics;
     final totalPages = _book?.totalPages;
 
-    if (analytics == null ||
-        analytics.status != 'reading' ||
-        totalPages == null ||
-        totalPages == 0) {
+    if (analytics == null || analytics.status != 'reading' || totalPages == null || totalPages == 0) {
       return const SizedBox.shrink();
     }
-
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Okuma İlerlemesi'),
+        // Slider hızlı ve kaba ayar için kalır.
         Slider(
-          value:
-              analytics.currentPage.toDouble().clamp(0, totalPages.toDouble()),
+          value: analytics.currentPage.toDouble().clamp(0, totalPages.toDouble()),
           max: totalPages.toDouble(),
           divisions: totalPages > 0 ? totalPages : 1,
           label: analytics.currentPage.toString(),
           onChanged: _updateProgress,
           onChangeEnd: (value) => _saveProgress(),
         ),
+        // Hassas ayar için tıklanabilir metin alanı.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${analytics.currentPage} / $totalPages'),
-              Text(
-                  '%${(analytics.currentPage / totalPages * 100).toStringAsFixed(0)} tamamlandı'),
+              InkWell(
+                onTap: _showUpdateCurrentPageDialog, // Tıklanınca diyaloğu aç
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Text('${analytics.currentPage} / $totalPages', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(width: 8),
+                      Icon(Icons.edit, size: 16, color: Theme.of(context).colorScheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+              Text('%${(analytics.currentPage / totalPages * 100).toStringAsFixed(0)} tamamlandı'),
             ],
           ),
         ),

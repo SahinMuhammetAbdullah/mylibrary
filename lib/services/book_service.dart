@@ -6,6 +6,7 @@ import 'package:my_library/models/models.dart' as app_models;
 import 'package:my_library/services/open_library_service.dart';
 import 'package:my_library/helpers/data_notifier.dart';
 import 'package:my_library/models/analysis/stats_data.dart';
+import 'package:intl/intl.dart';
 
 enum StatsPeriod { today, week, month, year, allTime }
 
@@ -165,37 +166,76 @@ class BookService with ChangeNotifier {
   // --- ANALİTİK VE İLERLEME YÖNETİMİ ---
 
   /// Bir kitabın analitik verilerini günceller.
-  Future<void> updateAnalytics(app_models.Analytics analytics) async {
+    Future<void> updateAnalytics(app_models.Analytics analytics) async {
     final db = await _db.database;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    // 1. Güncelleme öncesi mevcut sayfa sayısını al
+    int oldPageCount = 0;
+    final oldAnalyticsData = await db.query('Analytics', columns: ['a_currentPage'], where: 'a_id = ?', whereArgs: [analytics.id]);
+    if (oldAnalyticsData.isNotEmpty) {
+      oldPageCount = oldAnalyticsData.first['a_currentPage'] as int? ?? 0;
+    }
+
+    // 2. Okunan sayfa farkını (delta) hesapla
+    final int newPageCount = analytics.currentPage;
+    final int pagesReadDelta = newPageCount - oldPageCount;
+
+    // 3. Eğer ilerlemede bir değişiklik varsa (pozitif veya negatif), günlük kaydı güncelle
+    // Eskiden: if (pagesReadDelta > 0)
+    if (pagesReadDelta != 0) {
+      // SQL'in toplama işlemi, `+ (-5)` gibi negatif bir sayıyı da doğru şekilde işler.
+      await db.rawInsert('''
+        INSERT INTO Analytics_Time_Series (u_id, ats_date, ats_pagesRead)
+        VALUES (?, ?, ?)
+        ON CONFLICT(u_id, ats_date) DO UPDATE SET
+        ats_pagesRead = ats_pagesRead + excluded.ats_pagesRead
+      ''', [_currentUserId, today, pagesReadDelta]);
+    }
+
+    // 4. Ana Analytics tablosunu güncelle
     analytics.lastReadAt = DateTime.now();
-    await db.update('Analytics', analytics.toMap(),
-        where: 'a_id = ?', whereArgs: [analytics.id]);
+    await db.update('Analytics', analytics.toMap(), where: 'a_id = ?', whereArgs: [analytics.id]);
+    
     notifyDataChanged();
   }
 
+
   /// Bir kitabın okuma durumunu değiştirir.
-  Future<void> changeBookStatus(
-      app_models.Analytics analytics, String newStatus) async {
-    analytics.status = newStatus;
+  Future<void> changeBookStatus(app_models.Analytics analytics, String newStatus) async {
     final now = DateTime.now();
+    analytics.status = newStatus;
+    
+    // Okumaya yeni başlanıyorsa, başlangıç tarihini ayarla.
     if (newStatus == 'reading' && analytics.startedAt == null) {
       analytics.startedAt = now;
     }
+    
+    // Kitap tamamlandı olarak işaretleniyorsa...
     if (newStatus == 'completed') {
       analytics.finishedAt = now;
+      
+      // 1. İlerlemeyi %100 yap
       final db = await _db.database;
-      final bookData = await db.query('Books',
-          columns: ['b_totalPages'],
-          where: 'b_id = ?',
-          whereArgs: [analytics.bookId]);
+      final bookData = await db.query('Books', columns: ['b_totalPages'], where: 'b_id = ?', whereArgs: [analytics.bookId]);
       if (bookData.isNotEmpty) {
-        analytics.currentPage =
-            bookData.first['b_totalPages'] as int? ?? analytics.currentPage;
+        analytics.currentPage = bookData.first['b_totalPages'] as int? ?? analytics.currentPage;
       }
+
+      // 2. Günlük bitirilen kitap sayısını 1 artır.
+      // `ON CONFLICT` sayesinde, eğer o güne ait bir kayıt yoksa oluşturur, varsa günceller.
+      final today = DateFormat('yyyy-MM-dd').format(now);
+      await db.rawInsert('''
+        INSERT INTO Analytics_Time_Series (u_id, ats_date, ats_bookRead)
+        VALUES (?, ?, ?)
+        ON CONFLICT(u_id, ats_date) DO UPDATE SET
+        ats_bookRead = ats_bookRead + excluded.ats_bookRead
+      ''', [_currentUserId, today, 1]); // excluded.ats_bookRead, VALUES'taki 1'e karşılık gelir.
     }
+    
+    // Ana analitik kaydını güncelle ve kütüphane listesini yenile.
     await updateAnalytics(analytics);
     await loadLibraryBooks();
-    notifyDataChanged();
   }
 
   // --- VERİ ÇEKME METOTLARI ---
@@ -304,69 +344,81 @@ class BookService with ChangeNotifier {
   /// Kullanıcının okuma istatistiklerini, belirtilen zaman periyoduna göre hesaplar.
   Future<StatsData> getStats({StatsPeriod period = StatsPeriod.allTime}) async {
     final db = await _db.database;
+    // Toplam kitap sayısını (kütüphanedeki) almak için bu sorgu hala gerekli.
     final allAnalytics = await db.query('Analytics', where: 'u_id = ?', whereArgs: [_currentUserId]);
     
-    final now = DateTime.now();
-    DateTime? startDate;
-
-    // Seçilen periyoda göre bir başlangıç tarihi belirle
-    switch (period) {
-      case StatsPeriod.today:
-        startDate = DateTime(now.year, now.month, now.day);
-        break;
-      case StatsPeriod.week:
-        startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-        break;
-      case StatsPeriod.month:
-        startDate = DateTime(now.year, now.month, 1);
-        break;
-      case StatsPeriod.year:
-        startDate = DateTime(now.year, 1, 1);
-        break;
-      case StatsPeriod.allTime:
-        startDate = null; // Başlangıç tarihi yok, her şeyi dahil et
-        break;
-    }
-
-    // Belirlenen periyotta tamamlanmış kitapları filtrele
-    final completedBooksInPeriod = allAnalytics.where((m) {
-      if (m['a_status'] != 'completed' || m['a_finishedAt'] == null) return false;
-      // Eğer bir başlangıç tarihi varsa, bitiş tarihinin o tarihten sonra olup olmadığını kontrol et
-      if (startDate != null) {
-        return DateTime.parse(m['a_finishedAt'] as String).isAfter(startDate);
-      }
-      // Başlangıç tarihi yoksa (Tüm Zamanlar), tüm tamamlanmış kitapları dahil et
-      return true;
-    }).toList();
+    // Periyoda göre dinamik bir WHERE sorgu parçası ve argüman listesi oluştur.
+    String whereClause = 'WHERE u_id = ?';
+    List<dynamic> whereArgs = [_currentUserId];
     
-    final booksReadCount = completedBooksInPeriod.length;
-
-    // Okunan toplam sayfa sayısını SADECE bu periyotta tamamlanan kitaplara göre hesapla
-    int totalPagesReadInPeriod = 0;
-    if (completedBooksInPeriod.isNotEmpty) {
-      final bookIds = completedBooksInPeriod.map((m) => m['b_id']).toList();
-      final pageCounts = await db.query('Books', columns: ['b_totalPages'], where: 'b_id IN (${bookIds.map((_) => '?').join(',')})', whereArgs: bookIds);
-      totalPagesReadInPeriod = pageCounts.fold(0, (sum, map) => sum + (map['b_totalPages'] as int? ?? 0));
+    // Eğer periyot "Tüm Zamanlar" değilse, sorguya tarih filtresi ekle.
+    if (period != StatsPeriod.allTime) {
+      final now = DateTime.now();
+      DateTime startDate;
+      switch (period) {
+        case StatsPeriod.today: 
+          startDate = DateTime(now.year, now.month, now.day); 
+          break;
+        case StatsPeriod.week: 
+          // Haftanın ilk gününü (Pazartesi) bulur.
+          startDate = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1)); 
+          break;
+        case StatsPeriod.month: 
+          startDate = DateTime(now.year, now.month, 1); 
+          break;
+        case StatsPeriod.year: 
+          startDate = DateTime(now.year, 1, 1); 
+          break;
+        default: 
+          startDate = DateTime(1970); // Ulaşılamaz durum, tüm zamanları kapsar.
+      }
+      // SQL sorgusuna tarih karşılaştırma parçasını ekle.
+      whereClause += ' AND ats_date >= ?';
+      // Argüman listesine formatlanmış tarihi ekle.
+      whereArgs.add(DateFormat('yyyy-MM-dd').format(startDate));
     }
 
-    // Alt periyotlar için hesaplamalar (Bunlar her zaman tüm zamanlara göre kalabilir veya
-    // istenirse bu da dinamik hale getirilebilir, şimdilik basit tutalım)
-    final allCompletedBooks = allAnalytics.where((m) => m['a_status'] == 'completed');
-    final todayDate = DateTime(now.year, now.month, now.day);
-    final weekDate = todayDate.subtract(Duration(days: now.weekday-1));
-    final monthDate = DateTime(now.year, now.month, 1);
-    final yearDate = DateTime(now.year, 1, 1);
+    // Toplamları (SUM) tek bir verimli SQL sorgusuyla al.
+    final result = await db.rawQuery('''
+      SELECT 
+        SUM(ats_pagesRead) as totalPages,
+        SUM(ats_bookRead) as totalBooks
+      FROM Analytics_Time_Series
+      $whereClause
+    ''', whereArgs);
 
-    int booksToday = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(todayDate)).length;
-    int booksWeek = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(weekDate)).length;
-    int booksMonth = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(monthDate)).length;
-    int booksYear = allCompletedBooks.where((m) => m['a_finishedAt'] != null && DateTime.parse(m['a_finishedAt'] as String).isAfter(yearDate)).length;
+    final stats = result.first;
+    final pagesReadInPeriod = stats['totalPages'] as int? ?? 0;
+    final booksReadInPeriod = stats['totalBooks'] as int? ?? 0;
+    
+    // Alt periyotlar için olan küçük sayaçları da (Bugün, Bu Hafta vb.)
+    // aynı verimli yöntemle, tüm zamanlar için tek seferde hesaplayalım.
+    final overallStatsResult = await db.rawQuery('''
+      SELECT 
+        SUM(CASE WHEN ats_date = date('now', 'localtime') THEN ats_bookRead ELSE 0 END) as booksToday,
+        SUM(CASE WHEN ats_date >= date('now', 'localtime', 'weekday 0', '-6 days') THEN ats_bookRead ELSE 0 END) as booksWeek,
+        SUM(CASE WHEN ats_date >= date('now', 'localtime', 'start of month') THEN ats_bookRead ELSE 0 END) as booksMonth,
+        SUM(CASE WHEN ats_date >= date('now', 'localtime', 'start of year') THEN ats_bookRead ELSE 0 END) as booksYear
+      FROM Analytics_Time_Series
+      WHERE u_id = ?
+    ''', [_currentUserId]);
+
+    final overallStats = overallStatsResult.first;
 
     return StatsData(
-      totalBooks: allAnalytics.length, // Bu her zaman toplam kitap sayısıdır
-      booksRead: booksReadCount,
-      pagesRead: totalPagesReadInPeriod,
-      booksReadByPeriod: {'daily': booksToday, 'weekly': booksWeek, 'monthly': booksMonth, 'yearly': booksYear},
+      // Bu, kütüphanedeki toplam kitap sayısıdır (okunuyor, okunacak dahil).
+      totalBooks: allAnalytics.length,
+      // Bu, seçilen periyotta bitirilen kitap sayısıdır.
+      booksRead: booksReadInPeriod,
+      // Bu, seçilen periyotta okunan toplam sayfa sayısıdır.
+      pagesRead: pagesReadInPeriod,
+      // Bu harita, alt sayaçlar için tüm zamanlardaki verileri gösterir.
+      booksReadByPeriod: {
+        'daily': overallStats['booksToday'] as int? ?? 0,
+        'weekly': overallStats['booksWeek'] as int? ?? 0,
+        'monthly': overallStats['booksMonth'] as int? ?? 0,
+        'yearly': overallStats['booksYear'] as int? ?? 0,
+      },
     );
   }
 

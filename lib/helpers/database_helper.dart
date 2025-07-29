@@ -126,7 +126,21 @@ class DatabaseHelper {
         FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE   -- Eğer bir kullanıcı silinirse, notları da silinir.
       )
     ''');
-
+    
+    // === YENİ TABLO: GÜNLÜK İSTATİSTİK KAYITLARI ===
+    // Bu tablo, her gün okunan sayfa ve kitap sayısını tutar.
+    batch.execute('''
+      CREATE TABLE Analytics_Time_Series(
+        ats_id INTEGER PRIMARY KEY,
+        u_id INTEGER NOT NULL,
+        ats_date TEXT NOT NULL,
+        ats_pagesRead INTEGER NOT NULL DEFAULT 0,
+        ats_bookRead INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(u_id, ats_date),
+        FOREIGN KEY (u_id) REFERENCES User(u_id) ON DELETE CASCADE
+      )
+    ''');
+    
     // --- İLİŞKİ (JUNCTION) TABLOLARI ---
     // Bu tablolar, "çoktan çoğa" (many-to-many) ilişkileri yönetir.
     // Örn: Bir kitabın birden çok yazarı olabilir, bir yazarın da birden çok kitabı.
