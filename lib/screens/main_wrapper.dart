@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_library/screens/all_notes_screen.dart';
 import 'package:my_library/screens/home_screen.dart';
 import 'package:my_library/screens/stats_screen.dart';
+import 'package:my_library/services/connectivity_service.dart';
+
 
 class MainWrapper extends StatefulWidget {
   final Function(ThemeMode) changeTheme;
@@ -12,27 +14,65 @@ class MainWrapper extends StatefulWidget {
 
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
+  late final List<Widget> _pages;
 
-  // Placeholder screens for other tabs
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const AllNotesScreen(), // Placeholder yerine yeni ekranı koy
-    const StatsScreen(),
-    const Scaffold(body: Center(child: Text("Profil (Yapım Aşamasında)"))),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  @override
+  void initState() {
+    super.initState();
+    // YENİ: İnternet dinleme servisini başlat
+    ConnectivityService.instance.initialize();
+    _pages = <Widget>[
+      const HomeScreen(),
+      const AllNotesScreen(),
+      const StatsScreen(),
+    ];
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  void dispose() {
+    // YENİ: Servisi temizle
+    ConnectivityService.instance.dispose();
+    super.dispose();
+  }
 
+  void _onItemTapped(int index) {
+    setState(() { _selectedIndex = index; });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _pages),
+      body: Column(
+        children: [
+          // YENİ: İnternet durumunu dinleyen ve banner gösteren widget
+          ValueListenableBuilder<bool>(
+            valueListenable: ConnectivityService.instance.isConnected,
+            builder: (context, isConnected, child) {
+              // Eğer bağlı değilse, bir banner göster.
+              if (!isConnected) {
+                return Material(
+                  child: Container(
+                    width: double.infinity,
+                    color: Colors.red.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: const Text(
+                      'İnternet bağlantısı yok',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              }
+              // Bağlıysa, hiçbir şey gösterme.
+              return const SizedBox.shrink();
+            },
+          ),
+          // Uygulamanın geri kalanı
+          Expanded(
+            child: IndexedStack(index: _selectedIndex, children: _pages),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(

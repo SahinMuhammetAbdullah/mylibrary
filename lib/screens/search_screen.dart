@@ -6,6 +6,7 @@ import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:my_library/services/book_service.dart';
 import 'package:my_library/services/open_library_service.dart';
 import 'book_detail_screen.dart';
+import 'package:my_library/services/connectivity_service.dart'; // YENİ IMPORT
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -47,6 +48,18 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _performSearch(String query) async {
+    // YENİ: İnternet bağlantısını kontrol et
+    if (!ConnectivityService.instance.isConnected.value) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Kitap aramak için internet bağlantısı gereklidir.')),
+        );
+      }
+      return; // Bağlantı yoksa aramayı başlatma
+    }
+
     if (query.isEmpty) return;
     setState(() {
       _isLoading = true;
@@ -75,7 +88,19 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _scanBarcode() async {
+    if (!ConnectivityService.instance.isConnected.value) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Kitap aramak için internet bağlantısı gereklidir.')),
+        );
+      }
+      return; // Bağlantı yoksa tarayıcıyı başlatma
+    }
+
     String barcodeScanRes;
+
     try {
       barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
           '#D4AF37', // Vurgu rengimiz
