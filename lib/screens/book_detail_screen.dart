@@ -284,8 +284,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       _buildProgressBar(), // YENİ: İlerleme çubuğu
                       const SizedBox(height: 16),
                       _buildSubjectsExpansionTile(),
-
-                      _buildSubjectsExpansionTile(),
                       const SizedBox(height: 16),
                       _buildSectionTitle('Açıklama'),
                       _buildDescription(),
